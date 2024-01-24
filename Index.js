@@ -27,8 +27,21 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
+     const usersInfocollection=client.db('E-Translator').collection('usersInfo')
 
-    //000000
+    //------------------------------------------------------------------------
+     //                        users info part
+     //-----------------------------------------------------------------------
+     app.post('/users',async(req,res)=>{
+      const data=req.body
+      const result=await usersInfocollection.insertOne(data)
+      res.send(result)
+     })
+     app.get('/users',async(req,res)=>{
+      const result=await usersInfocollection.find().toArray()
+      res.send(result)
+     })
+   
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {

@@ -6,11 +6,11 @@ const app = express();
 
 
 //MIADLEWERE
+app.use(cors());
+app.use(express.json());
 
-app.use(cors())
-app.use(express.json())
 
-const port =  process.env.PORT || 6000;
+const port =  process.env.PORT || 5000;
 
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -55,7 +55,7 @@ async function run() {
     // await client.close();
   }
 }
-run().catch(console.dir);
+    run().catch(console.dir);
 
 
 app.get('/',(req,res)=>{

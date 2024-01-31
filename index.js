@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require('dotenv').config();
+const SSLCommerzPayment = require('sslcommerz-lts');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 
@@ -26,6 +27,11 @@ const client = new MongoClient(uri, {
   }
 });
 
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASS;
+const is_live = false //true for live, false for sandbox
+
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -33,7 +39,12 @@ async function run() {
     // Send a ping to confirm a successful connection
 
      const usersInfocollection=client.db('E-Translator').collection('usersInfo')
+<<<<<<< HEAD
+     const productCollection = client.db("E-Translator").collection("products");
+    const orderCollection = client.db("E-Translator").collection("orders");
+=======
      const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
+>>>>>>> 247db68e6539a756ae24d3f7d18fc66d6426bbaa
 
     //------------------------------------------------------------------------
      //                        users info part
@@ -48,6 +59,57 @@ async function run() {
       const result=await usersInfocollection.find().toArray()
       res.send(result)
      })
+<<<<<<< HEAD
+
+     //sslcommerz integration
+     app.post("/order", async(req, res) =>{
+      const product = await productCollection.findOne({
+        _id: new ObjectId(req.body.productId),
+      });
+      const order = req.body;
+      console.log(product);
+
+      const data = {
+        total_amount: product?.price,
+        currency: 'BDT',
+        tran_id: 'REF123', // use unique tran_id for each api call
+        success_url: 'http://localhost:3030/success',
+        fail_url: 'http://localhost:3030/fail',
+        cancel_url: 'http://localhost:3030/cancel',
+        ipn_url: 'http://localhost:3030/ipn',
+        shipping_method: 'Courier',
+        product_name: 'Computer.',
+        product_category: 'Electronic',
+        product_profile: 'general',
+        cus_name: order.name,
+        cus_email: 'customer@example.com',
+        cus_add1: order.address,
+        cus_add2: 'Dhaka',
+        cus_city: 'Dhaka',
+        cus_state: 'Dhaka',
+        cus_postcode: order.postcode,
+        cus_country: 'Bangladesh',
+        cus_phone: order.phonenumber,
+        cus_fax: '01711111111',
+        ship_name: 'Customer Name',
+        ship_add1: 'Dhaka',
+        ship_add2: 'Dhaka',
+        ship_city: 'Dhaka',
+        ship_state: 'Dhaka',
+        ship_postcode: 1000,
+        ship_country: 'Bangladesh',
+    };
+
+    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live)
+    sslcz.init(data).then(apiResponse => {
+        // Redirect the user to payment gateway
+        let GatewayPageURL = apiResponse.GatewayPageURL
+        res.redirect(GatewayPageURL)
+        console.log('Redirecting to: ', GatewayPageURL)
+    });
+    })
+   
+=======
     //------------------------------------------------------------------------
      //                        blogs info
      //-----------------------------------------------------------------------
@@ -61,6 +123,7 @@ async function run() {
       const result=await blogsInfocollection.find().toArray()
       res.send(result)
      })
+>>>>>>> 247db68e6539a756ae24d3f7d18fc66d6426bbaa
    
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

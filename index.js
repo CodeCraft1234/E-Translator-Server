@@ -57,15 +57,16 @@ async function run() {
      })
 
      //sslcommerz integration
-     app.post("/order", async(req, res) =>{
+     app.post("/order/:id", async(req, res) =>{
+      // console.log(req.body);
       const product = await productCollection.findOne({
         _id: new ObjectId(req.body.productId),
       });
       const order = req.body;
-      console.log(product);
+      // console.log(product);
 
       const data = {
-        total_amount: product?.price,
+        total_amount: order.price,
         currency: 'BDT',
         tran_id: 'REF123', // use unique tran_id for each api call
         success_url: 'http://localhost:3030/success',
@@ -94,14 +95,14 @@ async function run() {
         ship_postcode: 1000,
         ship_country: 'Bangladesh',
     };
-
-    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live)
-    sslcz.init(data).then(apiResponse => {
-        // Redirect the user to payment gateway
-        let GatewayPageURL = apiResponse.GatewayPageURL
-        res.redirect(GatewayPageURL)
-        console.log('Redirecting to: ', GatewayPageURL)
-    });
+    console.log(data);
+    // const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live)
+    // sslcz.init(data).then(apiResponse => {
+    //     // Redirect the user to payment gateway
+    //     let GatewayPageURL = apiResponse.GatewayPageURL
+    //     res.redirect(GatewayPageURL)
+    //     console.log('Redirecting to: ', GatewayPageURL)
+    // });
     })
    
    

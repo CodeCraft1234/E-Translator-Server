@@ -39,6 +39,7 @@ async function run() {
     // Send a ping to confirm a successful connection
 
      const usersInfocollection=client.db('E-Translator').collection('usersInfo')
+     const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
      const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
 
@@ -53,6 +54,19 @@ async function run() {
      
      app.get('/users',async(req,res)=>{
       const result=await usersInfocollection.find().toArray()
+      res.send(result)
+     })
+    //------------------------------------------------------------------------
+     //                        blogs info part
+     //-----------------------------------------------------------------------
+     app.post('/blogs',async(req,res)=>{
+      const data=req.body;
+      const result=await blogsInfocollection.insertOne(data)
+      res.send(result)
+     })
+     
+     app.get('/blogs',async(req,res)=>{
+      const result=await blogsInfocollection.find().toArray()
       res.send(result)
      })
 

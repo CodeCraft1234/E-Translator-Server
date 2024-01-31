@@ -39,8 +39,12 @@ async function run() {
     // Send a ping to confirm a successful connection
 
      const usersInfocollection=client.db('E-Translator').collection('usersInfo')
+<<<<<<< HEAD
      const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
+=======
+     const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
+>>>>>>> 247db68e6539a756ae24d3f7d18fc66d6426bbaa
 
     //------------------------------------------------------------------------
      //                        users info part
@@ -55,6 +59,7 @@ async function run() {
       const result=await usersInfocollection.find().toArray()
       res.send(result)
      })
+<<<<<<< HEAD
 
      //sslcommerz integration
      app.post("/order", async(req, res) =>{
@@ -104,6 +109,21 @@ async function run() {
     });
     })
    
+=======
+    //------------------------------------------------------------------------
+     //                        blogs info
+     //-----------------------------------------------------------------------
+     app.post('/blogs',async(req,res)=>{
+      const data=req.body;
+      const result=await blogsInfocollection.insertOne(data)
+      res.send(result)
+     })
+     
+     app.get('/blogs',async(req,res)=>{
+      const result=await blogsInfocollection.find().toArray()
+      res.send(result)
+     })
+>>>>>>> 247db68e6539a756ae24d3f7d18fc66d6426bbaa
    
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

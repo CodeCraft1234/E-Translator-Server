@@ -71,7 +71,7 @@ async function run() {
         total_amount: order.price,
         currency: 'BDT',
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: 'http://localhost:3030/success',
+        success_url: `http://localhost:5000/payment/success/${tran_id}`,
         fail_url: 'http://localhost:3030/fail',
         cancel_url: 'http://localhost:3030/cancel',
         ipn_url: 'http://localhost:3030/ipn',
@@ -103,11 +103,26 @@ async function run() {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
+
+        const finalOrder = {
+          product,
+          paidStatus: false,
+          tranjectionId: tran_id,
+        };
+        const result = orderCollection.insertOne(finalOrder);
+
+
         console.log('Redirecting to: ', GatewayPageURL);
     });
+
+    app.post("/payment/success/:tranId", async(req, res) =>{
+      console.log(req.params.tranId);
+     });
+
     });
    
-   
+  
+
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {

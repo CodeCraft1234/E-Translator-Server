@@ -41,6 +41,7 @@ async function run() {
      const usersInfocollection=client.db('E-Translator').collection('usersInfo')
      const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
+    const tran_id = new ObjectId().toString();
 
     //------------------------------------------------------------------------
      //                        users info part
@@ -56,6 +57,7 @@ async function run() {
       res.send(result)
      })
 
+     
      //sslcommerz integration
      app.post("/order/:id", async(req, res) =>{
       // console.log(req.body);
@@ -68,7 +70,7 @@ async function run() {
       const data = {
         total_amount: order.price,
         currency: 'BDT',
-        tran_id: 'REF123', // use unique tran_id for each api call
+        tran_id: tran_id, // use unique tran_id for each api call
         success_url: 'http://localhost:3030/success',
         fail_url: 'http://localhost:3030/fail',
         cancel_url: 'http://localhost:3030/cancel',
@@ -96,14 +98,14 @@ async function run() {
         ship_country: 'Bangladesh',
     };
     console.log(data);
-    // const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live)
-    // sslcz.init(data).then(apiResponse => {
-    //     // Redirect the user to payment gateway
-    //     let GatewayPageURL = apiResponse.GatewayPageURL
-    //     res.redirect(GatewayPageURL)
-    //     console.log('Redirecting to: ', GatewayPageURL)
-    // });
-    })
+    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live)
+    sslcz.init(data).then(apiResponse => {
+        // Redirect the user to payment gateway
+        let GatewayPageURL = apiResponse.GatewayPageURL;
+        res.send({ url: GatewayPageURL });
+        console.log('Redirecting to: ', GatewayPageURL);
+    });
+    });
    
    
     // await client.db("admin").command({ ping: 1 });

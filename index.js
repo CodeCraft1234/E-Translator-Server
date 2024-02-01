@@ -86,7 +86,7 @@ async function run() {
         currency: 'BDT',
         tran_id: tran_id, // use unique tran_id for each api call
         success_url: `http://localhost:5000/payment/success/${tran_id}`,
-        fail_url: 'http://localhost:3030/fail',
+        fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
         cancel_url: 'http://localhost:3030/cancel',
         ipn_url: 'http://localhost:3030/ipn',
         shipping_method: 'Courier',
@@ -123,17 +123,48 @@ async function run() {
           paidStatus: false,
           tranjectionId: tran_id,
         };
-        const result = orderCollection.insertOne(finalOrder);
 
+        const result = orderCollection.insertOne(finalOrder);
+       
 
         console.log('Redirecting to: ', GatewayPageURL);
     });
 
     app.post("/payment/success/:tranId", async(req, res) =>{
-      console.log(req.params.tranId);
-     });
+      // console.log(req.params.tranId);
+      const result = await orderCollection.updateOne(
+        { tranjectionId: req.params.tranId },
+        {
+          $set:{
+          paidStatus: true,
+          },
+        }
+        );
 
+        if(result.modifiedCount > 0){
+          res.redirect(`http://localhost:5173/payment/success/${req.params.tranId}`
+          );
+        }
+     });
     });
+
+    app.post("/payment/fail/:tranId", async(req, res) =>{
+      // console.log(req.params.tranId);
+      const result = await orderCollection.updateOne(
+        { tranjectionId: req.params.tranId },
+        {
+          $set:{
+          paidStatus: true,
+          },
+        }
+        );
+
+        if(result.modifiedCount > 0){
+          res.redirect(`http://localhost:5173/payment/fail/${req.params.tranId}`
+          );
+        }
+     });
+    
    
   
 

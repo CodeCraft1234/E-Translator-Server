@@ -130,6 +130,9 @@ async function run() {
         console.log('Redirecting to: ', GatewayPageURL);
     });
 
+    
+  
+
     app.post("/payment/success/:tranId", async(req, res) =>{
       // console.log(req.params.tranId);
       const result = await orderCollection.updateOne(
@@ -146,11 +149,10 @@ async function run() {
           );
         }
      });
-    });
 
-    app.post("/payment/fail/:tranId", async(req, res) =>{
+     app.post("/payment/fail/:tranId", async(req, res) =>{
       // console.log(req.params.tranId);
-      const result = await orderCollection.updateOne(
+      const result = await orderCollection.deleteOne(
         { tranjectionId: req.params.tranId },
         {
           $set:{
@@ -159,13 +161,13 @@ async function run() {
         }
         );
 
-        if(result.modifiedCount > 0){
+        if(result.deletedCount){
           res.redirect(`http://localhost:5173/payment/fail/${req.params.tranId}`
           );
         }
      });
-    
-   
+
+    });
   
 
     // await client.db("admin").command({ ping: 1 });

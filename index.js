@@ -57,6 +57,16 @@ async function run() {
       const result=await usersInfocollection.find().toArray()
       res.send(result)
      })
+
+     app.delete('/users/:id',async(req,res)=>{
+      const id=req.params.id 
+      console.log(id)
+      const filter={_id: new ObjectId(id)}
+      console.log(filter)
+      const result=await usersInfocollection.deleteOne(filter) 
+      res.send(result)
+     })
+
     //------------------------------------------------------------------------
      //                        blogs info part
      //-----------------------------------------------------------------------

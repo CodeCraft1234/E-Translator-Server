@@ -90,6 +90,12 @@ async function run() {
       const result=await blogsInfocollection.find().toArray()
       res.send(result)
      })
+     app.delete('/blogs/:id',async(req,res)=>{
+      const id=req.params.id 
+      const filter={_id: new ObjectId(id)}
+      const result=await blogsInfocollection.deleteOne(filter) 
+      res.send(result)
+     })
 
      
      //sslcommerz integration

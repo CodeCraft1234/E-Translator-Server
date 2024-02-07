@@ -136,6 +136,20 @@ async function run() {
       res.send(result)
      })
 
+     app.patch('/blogs/:id',async(req,res)=>{
+      const id=req.params.id
+      const filter={_id: new ObjectId(id)}
+      const body=req.body
+      const updatedoc={
+        $set:{
+          title:body.title,
+          description:body.description
+        }
+      }
+      const result=await blogsInfocollection.updateOne(filter,updatedoc)
+      res.send(result)
+     })
+
      app.delete('/blogs/:id',async(req,res)=>{
       const id=req.params.id 
       const filter={_id: new ObjectId(id)}

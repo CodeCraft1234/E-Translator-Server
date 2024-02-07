@@ -42,7 +42,45 @@ async function run() {
      const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
      const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
+    const translationCollection = client.db("E-Translator").collection("translations");
     const tran_id = new ObjectId().toString();
+
+     //------------------------------------------------------------------------
+     //                        translation history part
+     //-----------------------------------------------------------------------
+     app.post('/api/history', async (req, res) => {
+      try {
+        await client.connect();
+        
+    
+        const translation = req.body;
+    
+        const result = await translationCollection.insertOne(translation);
+    
+        res.status(201).json(result.ops[0]);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      } finally {
+        await client.close();
+      }
+    });
+    
+    app.get('/api/history', async (req, res) => {
+      try {
+        await client.connect();
+       
+    
+        const translations = await translationCollection.find().sort({ createdAt: -1 }).toArray();
+    
+        res.json(translations);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      } finally {
+        await client.close();
+      }
+    });
 
     //------------------------------------------------------------------------
      //                        users info part
@@ -90,6 +128,14 @@ async function run() {
       const result=await blogsInfocollection.find().toArray()
       res.send(result)
      })
+
+     app.get('/blogs/:id',async(req,res)=>{
+      const id=req.params.id 
+      const filter={_id: new ObjectId(id)}
+      const result=await blogsInfocollection.findOne(filter)
+      res.send(result)
+     })
+
      app.delete('/blogs/:id',async(req,res)=>{
       const id=req.params.id 
       const filter={_id: new ObjectId(id)}

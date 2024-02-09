@@ -41,8 +41,10 @@ async function run() {
      const usersInfocollection=client.db('E-Translator').collection('usersInfo')
      const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
      const productCollection = client.db("E-Translator").collection("products");
-    const orderCollection = client.db("E-Translator").collection("orders");
+     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client.db("E-Translator").collection("translations");
+    const ratingCollection = client.db("E-Translator").collection("rating");
+    const feedbackCollection = client.db("E-Translator").collection("feedback");
     const tran_id = new ObjectId().toString();
 
      //------------------------------------------------------------------------
@@ -88,6 +90,18 @@ async function run() {
      app.post('/users',async(req,res)=>{
       const data=req.body;
       const result=await usersInfocollection.insertOne(data)
+      res.send(result)
+     })
+
+     app.post('/rating',async(req,res)=>{
+      const data=req.body;
+      const result=await ratingCollection.insertOne(data)
+      res.send(result)
+     })
+
+     app.post('/feedback',async(req,res)=>{
+      const data=req.body;
+      const result=await feedbackCollection.insertOne(data)
       res.send(result)
      })
      

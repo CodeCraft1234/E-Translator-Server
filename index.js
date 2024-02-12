@@ -40,13 +40,15 @@ async function run() {
     // Send a ping to confirm a successful connection
 
 
-     const usersInfocollection=client.db('E-Translator').collection('usersInfo')
+    //  const usersInfocollection=client.db('E-Translator').collection('usersInfo')
      const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
      const productCollection = client.db("E-Translator").collection("products");
      const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client.db("E-Translator").collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
+    const messagesCollection = client.db("E-Translator").collection("messages");
+    const adminsCollection = client.db("E-Translator").collection("admins");
 
     const tran_id = new ObjectId().toString();
 
@@ -54,14 +56,70 @@ async function run() {
     io.on("connection", (socket) => {
       console.log("A user connected");
 
-      socket.on("chat message", (msg) => {
-        console.log("Message: ", msg);
-        io.emit("chat message", msg);
+      socket.on("chat message", async (msg) => {
+        const message = {
+          text: msg.text,
+          type: msg.type,
+          user: msg.user,
+          createdAt: new Date(),
+        };
+
+        try {
+          await messagesCollection.insertOne(message);
+          io.emit("chat message", message);
+        } catch (error) {
+          console.error("Error storing message in MongoDB:", error);
+        }
       });
+
+      socket.on("admin message", async (msg) => {
+        const message = {
+          text: msg.text,
+          type: msg.type,
+          user: msg.user,
+          createdAt: new Date(),
+        };
+    
+        try {
+          await messagesCollection.insertOne(message);
+          io.to(adminSocketId).emit("admin message", message); // Send to a specific admin
+        } catch (error) {
+          console.error("Error storing admin message in MongoDB:", error);
+        }
+      });
+
 
       socket.on("disconnect", () => {
         console.log("User disconnected");
       });
+
+      socket.on("admin connected", () => {
+        // Store the admin socket id when connected
+        adminSocketId = socket.id;
+        console.log("Admin connected");
+      });
+      
+    });
+
+    app.post("/api/messages", async (req, res) => {
+      try {
+        const message = req.body;
+        const result = await messagesCollection.insertOne(message);
+        res.status(201).json(result.ops[0]);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/api/messages", async (req, res) => {
+      try {
+        const messages = await messagesCollection.find().sort({ createdAt: 1 }).toArray();
+        res.json(messages);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     //------------------------------------------------------------------------

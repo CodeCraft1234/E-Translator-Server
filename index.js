@@ -1,4 +1,5 @@
 const express = require("express");
+const {Server} = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
 const SSLCommerzPayment = require("sslcommerz-lts");
@@ -8,7 +9,13 @@ const socketIo = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+// const io = socketIo(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+})
 
 //MIADLEWERE
 app.use(cors());
@@ -40,87 +47,104 @@ async function run() {
     // Send a ping to confirm a successful connection
 
 
-    //  const usersInfocollection=client.db('E-Translator').collection('usersInfo')
+     const usersInfocollection=client.db('E-Translator').collection('usersInfo')
      const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
      const productCollection = client.db("E-Translator").collection("products");
      const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client.db("E-Translator").collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
-    const messagesCollection = client.db("E-Translator").collection("messages");
-    const adminsCollection = client.db("E-Translator").collection("admins");
+    // const messagesCollection = client.db("E-Translator").collection("messages");
+    // const adminsCollection = client.db("E-Translator").collection("admins");
 
     const tran_id = new ObjectId().toString();
-
-    // socket io implementation
-    io.on("connection", (socket) => {
-      console.log("A user connected");
-
-      socket.on("chat message", async (msg) => {
-        const message = {
-          text: msg.text,
-          type: msg.type,
-          user: msg.user,
-          createdAt: new Date(),
-        };
-
-        try {
-          await messagesCollection.insertOne(message);
-          io.emit("chat message", message);
-        } catch (error) {
-          console.error("Error storing message in MongoDB:", error);
-        }
-      });
-
-      socket.on("admin message", async (msg) => {
-        const message = {
-          text: msg.text,
-          type: msg.type,
-          user: msg.user,
-          createdAt: new Date(),
-        };
     
-        try {
-          await messagesCollection.insertOne(message);
-          io.to(adminSocketId).emit("admin message", message); // Send to a specific admin
-        } catch (error) {
-          console.error("Error storing admin message in MongoDB:", error);
-        }
+    // socket io implementation
+    // io.on("connection", (socket) => {
+    //   console.log("A user connected");
+
+    io.on("connection", (socket) => {
+      console.log(`User connected: ${socket.id}`);
+
+      socket.on("join_room", (data) =>{
+        socket.join(data);
+        console.log(`User with ID: ${socket.id} joined room: ${data}`);
       });
+
+      socket.on("send_message", (data) => {
+        console.log(data);
+        socket.to(data.room).emit("receive_message", data);
+        });
+
+      // socket.on("chat message", async (msg) => {
+      //   const message = {
+      //     text: msg.text,
+      //     type: msg.type,
+      //     user: msg.user,
+      //     createdAt: new Date(),
+      //   };
+
+      //   try {
+      //     await messagesCollection.insertOne(message);
+      //     io.emit("chat message", message);
+      //   } catch (error) {
+      //     console.error("Error storing message in MongoDB:", error);
+      //   }
+      // });
+
+      // socket.on("admin message", async (msg) => {
+      //   const message = {
+      //     text: msg.text,
+      //     type: msg.type,
+      //     user: msg.user,
+      //     createdAt: new Date(),
+      //   };
+    
+      //   try {
+      //     await messagesCollection.insertOne(message);
+      //     io.to(adminSocketId).emit("admin message", message); // Send to a specific admin
+      //   } catch (error) {
+      //     console.error("Error storing admin message in MongoDB:", error);
+      //   }
+      // });
 
 
       socket.on("disconnect", () => {
-        console.log("User disconnected");
+        console.log("User disconnected", socket.id);
       });
 
-      socket.on("admin connected", () => {
-        // Store the admin socket id when connected
-        adminSocketId = socket.id;
-        console.log("Admin connected");
-      });
+      // socket.on("admin connected", () => {
+      //   // Store the admin socket id when connected
+      //   adminSocketId = socket.id;
+      //   console.log("Admin connected");
+      // });
       
     });
 
-    app.post("/api/messages", async (req, res) => {
-      try {
-        const message = req.body;
-        const result = await messagesCollection.insertOne(message);
-        res.status(201).json(result.ops[0]);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
+    server.listen(5001, () => {
+      console.log("SOCKET.IO SERVER RUNNING");
     });
 
-    app.get("/api/messages", async (req, res) => {
-      try {
-        const messages = await messagesCollection.find().sort({ createdAt: 1 }).toArray();
-        res.json(messages);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
+    // app.post("/api/messages", async (req, res) => {
+    //   try {
+    //     const message = req.body;
+    //     const result = await messagesCollection.insertOne(message);
+    //     res.status(201).json(result.ops[0]);
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json({ error: "Internal Server Error" });
+    //   }
+    // });
+
+    // app.get("/api/messages", async (req, res) => {
+    //   try {
+    //     const messages = await messagesCollection.find().sort({ createdAt: 1 }).toArray();
+    //     res.json(messages);
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json({ error: "Internal Server Error" });
+    //   }
+    // });
 
     //------------------------------------------------------------------------
     //                        translation history part

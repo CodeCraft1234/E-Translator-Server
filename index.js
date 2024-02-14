@@ -1,4 +1,5 @@
 const express = require("express");
+const { Server } = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
 const SSLCommerzPayment = require("sslcommerz-lts");
@@ -8,7 +9,12 @@ const socketIo = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
 
 //MIADLEWERE
 app.use(cors());
@@ -39,87 +45,42 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
 
-
-    //  const usersInfocollection=client.db('E-Translator').collection('usersInfo')
-     const blogsInfocollection=client.db('E-Translator').collection('blogsInfo')
-     const productCollection = client.db("E-Translator").collection("products");
-     const orderCollection = client.db("E-Translator").collection("orders");
-    const translationCollection = client.db("E-Translator").collection("translations");
+    const usersInfocollection = client
+      .db("E-Translator")
+      .collection("usersInfo");
+    const blogsInfocollection = client
+      .db("E-Translator")
+      .collection("blogsInfo");
+    const productCollection = client.db("E-Translator").collection("products");
+    const orderCollection = client.db("E-Translator").collection("orders");
+    const translationCollection = client
+      .db("E-Translator")
+      .collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
-    const messagesCollection = client.db("E-Translator").collection("messages");
-    const adminsCollection = client.db("E-Translator").collection("admins");
 
     const tran_id = new ObjectId().toString();
 
-    // socket io implementation
     io.on("connection", (socket) => {
-      console.log("A user connected");
+      console.log(`User connected: ${socket.id}`);
 
-      socket.on("chat message", async (msg) => {
-        const message = {
-          text: msg.text,
-          type: msg.type,
-          user: msg.user,
-          createdAt: new Date(),
-        };
-
-        try {
-          await messagesCollection.insertOne(message);
-          io.emit("chat message", message);
-        } catch (error) {
-          console.error("Error storing message in MongoDB:", error);
-        }
+      socket.on("join_room", (data) => {
+        socket.join(data);
+        console.log(`User with ID: ${socket.id} joined room: ${data}`);
       });
 
-      socket.on("admin message", async (msg) => {
-        const message = {
-          text: msg.text,
-          type: msg.type,
-          user: msg.user,
-          createdAt: new Date(),
-        };
-
-        try {
-          await messagesCollection.insertOne(message);
-          io.to(adminSocketId).emit("admin message", message); // Send to a specific admin
-        } catch (error) {
-          console.error("Error storing admin message in MongoDB:", error);
-        }
+      socket.on("send_message", (data) => {
+        console.log(data);
+        socket.to(data.room).emit("receive_message", data);
       });
-
 
       socket.on("disconnect", () => {
-        console.log("User disconnected");
+        console.log("User disconnected", socket.id);
       });
-
-      socket.on("admin connected", () => {
-        // Store the admin socket id when connected
-        adminSocketId = socket.id;
-        console.log("Admin connected");
-      });
-
     });
 
-    app.post("/api/messages", async (req, res) => {
-      try {
-        const message = req.body;
-        const result = await messagesCollection.insertOne(message);
-        res.status(201).json(result.ops[0]);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
-    });
-
-    app.get("/api/messages", async (req, res) => {
-      try {
-        const messages = await messagesCollection.find().sort({ createdAt: 1 }).toArray();
-        res.json(messages);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-      }
+    server.listen(5001, () => {
+      console.log("SOCKET.IO SERVER RUNNING");
     });
 
     //------------------------------------------------------------------------
@@ -162,96 +123,94 @@ async function run() {
     });
 
     //------------------------------------------------------------------------
-     //                        users info part
-     //-----------------------------------------------------------------------
-     app.post('/users',async(req,res)=>{
-      const data=req.body;
-      const result=await usersInfocollection.insertOne(data)
-      res.send(result)
-     })
+    //                        users info part
+    //-----------------------------------------------------------------------
+    app.post("/users", async (req, res) => {
+      const data = req.body;
+      const result = await usersInfocollection.insertOne(data);
+      res.send(result);
+    });
 
-     app.post('/rating',async(req,res)=>{
-      const data=req.body;
-      const result=await ratingCollection.insertOne(data)
-      res.send(result)
-     })
+    app.post("/rating", async (req, res) => {
+      const data = req.body;
+      const result = await ratingCollection.insertOne(data);
+      res.send(result);
+    });
 
-     app.post('/feedback',async(req,res)=>{
-      const data=req.body;
-      const result=await feedbackCollection.insertOne(data)
-      res.send(result)
-     })
+    app.post("/feedback", async (req, res) => {
+      const data = req.body;
+      const result = await feedbackCollection.insertOne(data);
+      res.send(result);
+    });
 
-     app.get('/users',async(req,res)=>{
-      const result=await usersInfocollection.find().toArray()
-      res.send(result)
-     })
+    app.get("/users", async (req, res) => {
+      const result = await usersInfocollection.find().toArray();
+      res.send(result);
+    });
 
-     app.delete('/users/:id',async(req,res)=>{
-      const id=req.params.id 
-      const filter={_id: new ObjectId(id)}
-      const result=await usersInfocollection.deleteOne(filter) 
-      res.send(result)
-     })
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await usersInfocollection.deleteOne(filter);
+      res.send(result);
+    });
 
-     app.patch('/users/:id',async(req,res)=>{
-      const id=req.params.id
-      const filter={_id:new ObjectId(id)}
-      const updatedoc={
-        $set:{
-          admin:true,
-        }
-      }
-      const result=await usersInfocollection.updateOne(filter,updatedoc)
-        res.send(result)
-    })
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedoc = {
+        $set: {
+          admin: true,
+        },
+      };
+      const result = await usersInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
 
     //------------------------------------------------------------------------
-     //                        blogs info part
-     //-----------------------------------------------------------------------
-     app.post('/blogs',async(req,res)=>{
-      const data=req.body;
-      const result=await blogsInfocollection.insertOne(data)
-      res.send(result)
-     })
+    //                        blogs info part
+    //-----------------------------------------------------------------------
+    app.post("/blogs", async (req, res) => {
+      const data = req.body;
+      const result = await blogsInfocollection.insertOne(data);
+      res.send(result);
+    });
 
-     app.get('/blogs',async(req,res)=>{
-      const result=await blogsInfocollection.find().toArray()
-      res.send(result)
-     })
+    app.get("/blogs", async (req, res) => {
+      const result = await blogsInfocollection.find().toArray();
+      res.send(result);
+    });
 
-     app.get('/blogs/:id',async(req,res)=>{
-      const id=req.params.id 
-      const filter={_id: new ObjectId(id)}
-      const result=await blogsInfocollection.findOne(filter)
-      res.send(result)
-     })
+    app.get("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await blogsInfocollection.findOne(filter);
+      res.send(result);
+    });
 
-     app.patch('/blogs/:id',async(req,res)=>{
-      const id=req.params.id
-      const filter={_id: new ObjectId(id)}
-      const body=req.body
-      const updatedoc={
-        $set:{
-          title:body.title,
-          description:body.description
-        }
-      }
-      const result=await blogsInfocollection.updateOne(filter,updatedoc)
-      res.send(result)
-     })
+    app.patch("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const body = req.body;
+      const updatedoc = {
+        $set: {
+          title: body.title,
+          description: body.description,
+        },
+      };
+      const result = await blogsInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
 
-     app.delete('/blogs/:id',async(req,res)=>{
-      const id=req.params.id 
-      const filter={_id: new ObjectId(id)}
-      const result=await blogsInfocollection.deleteOne(filter) 
-      res.send(result)
-     })
+    app.delete("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await blogsInfocollection.deleteOne(filter);
+      res.send(result);
+    });
 
-
-     //sslcommerz integration
-     app.post("/order/:id", async(req, res) =>{
-
+    //sslcommerz integration
+    app.post("/order/:id", async (req, res) => {
       // console.log(req.body);
       const product = await productCollection.findOne({
         _id: new ObjectId(req.body.productId),
@@ -265,12 +224,12 @@ async function run() {
         tran_id: tran_id, // use unique tran_id for each api call
         success_url: `https://e-translator-server.vercel.app/payment/success/${tran_id}`,
         fail_url: `https://e-translator-server.vercel.app/payment/fail/${tran_id}`,
-        cancel_url: 'http://localhost:3030/cancel',
-        ipn_url: 'http://localhost:3030/ipn',
-        shipping_method: 'Courier',
-        product_name: 'Computer.',
-        product_category: 'Electronic',
-        product_profile: 'general',
+        cancel_url: "http://localhost:3030/cancel",
+        ipn_url: "http://localhost:3030/ipn",
+        shipping_method: "Courier",
+        product_name: "Computer.",
+        product_category: "Electronic",
+        product_profile: "general",
         cus_name: order.name,
         cus_email: "customer@example.com",
         cus_add1: order.address,

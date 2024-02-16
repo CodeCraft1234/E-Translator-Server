@@ -137,6 +137,13 @@ async function run() {
       res.send(result);
     });
 
+
+    app.get("/rating", async (req, res) => {
+      const result = await ratingCollection.find().toArray();
+      res.send(result);
+    });
+
+
     app.post("/feedback", async (req, res) => {
       const data = req.body;
       const result = await feedbackCollection.insertOne(data);
@@ -181,9 +188,15 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/feedback", async (req, res) => {
+      const result = await feedbackCollection.find().toArray();
+      res.send(result);
+    });
+
     app.get("/blogs/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
+      // const test=Test
       const result = await blogsInfocollection.findOne(filter);
       res.send(result);
     });

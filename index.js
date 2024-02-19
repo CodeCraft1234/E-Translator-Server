@@ -254,6 +254,7 @@ async function run() {
     app.get("/blogs/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
+      // const test=Test
       const result = await blogsInfocollection.findOne(filter);
       res.send(result);
     });

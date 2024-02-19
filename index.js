@@ -172,6 +172,27 @@ async function run() {
     });
 
 
+
+    app.post("/rating", async (req, res) => {
+      const data = req.body;
+      const result = await ratingCollection.insertOne(data);
+      res.send(result);
+    });
+
+
+    app.get("/rating", async (req, res) => {
+      const result = await ratingCollection.find().toArray();
+      res.send(result);
+    });
+
+
+    app.post("/feedback", async (req, res) => {
+      const data = req.body;
+      const result = await feedbackCollection.insertOne(data);
+      res.send(result);
+    });
+
+
     app.get("/users", async (req, res) => {
       const result = await usersInfocollection.find().toArray();
       res.send(result);
@@ -222,6 +243,11 @@ async function run() {
 
     app.get("/blogs", async (req, res) => {
       const result = await blogsInfocollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/feedback", async (req, res) => {
+      const result = await feedbackCollection.find().toArray();
       res.send(result);
     });
 

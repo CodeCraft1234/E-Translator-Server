@@ -119,9 +119,99 @@ async function run() {
       res.send(result)
      })
 
-     
-     //sslcommerz integration
-     app.post("/order/:id", async(req, res) =>{
+    app.post("/rating", async (req, res) => {
+      const data = req.body;
+      const result = await ratingCollection.insertOne(data);
+      res.send(result);
+    });
+
+
+    app.get("/rating", async (req, res) => {
+      const result = await ratingCollection.find().toArray();
+      res.send(result);
+    });
+
+
+    app.post("/feedback", async (req, res) => {
+      const data = req.body;
+      const result = await feedbackCollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      const result = await usersInfocollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await usersInfocollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedoc = {
+        $set: {
+          admin: true,
+        },
+      };
+      const result = await usersInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
+
+    //------------------------------------------------------------------------
+    //                        blogs info part
+    //-----------------------------------------------------------------------
+    app.post("/blogs", async (req, res) => {
+      const data = req.body;
+      const result = await blogsInfocollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/blogs", async (req, res) => {
+      const result = await blogsInfocollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/feedback", async (req, res) => {
+      const result = await feedbackCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      // const test=Test
+      const result = await blogsInfocollection.findOne(filter);
+      res.send(result);
+    });
+
+    app.patch("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const body = req.body;
+      const updatedoc = {
+        $set: {
+          title: body.title,
+          description: body.description,
+        },
+      };
+      const result = await blogsInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
+
+    app.delete("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await blogsInfocollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    //sslcommerz integration
+    app.post("/order/:id", async (req, res) => {
       // console.log(req.body);
       const product = await productCollection.findOne({
         _id: new ObjectId(req.body.productId),

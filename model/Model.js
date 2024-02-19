@@ -6,27 +6,27 @@ const { Schema, model } = require('mongoose');
 const userSchema = new mongoose.Schema({
   username: String,
   email: String,
-  // Add other fields as needed
+  
 });
 
 // Define schema for blogs
 const blogSchema = new mongoose.Schema({
   title: String,
   content: String,
-  // Add other fields as needed
+ 
 });
 
 // Define schema for products
 const productSchema = new mongoose.Schema({
-    _id: {
-        type: Schema.Types.ObjectId,
-        auto: true,
-        required: true
-    },
+  _id: {
+    type: Schema.Types.ObjectId,
+    auto: true,
+    required: true
+  },
   name: String,
   price: Number,
   description: String,
-  // Add other fields as needed
+ 
 });
 
 // Define schema for orders
@@ -36,32 +36,80 @@ const orderSchema = new mongoose.Schema({
     ref: 'Product'
   },
   quantity: Number,
-  // Add other fields as needed
+ 
 });
 
 // Define schema for translations
 const translationSchema = new mongoose.Schema({
-  // Define translation schema fields here
+  originalText: String,
+  translatedText: String,
+  languageFrom: String,
+  languageTo: String,
+  
 });
 
 // Define schema for ratings
 const ratingSchema = new mongoose.Schema({
-  // Define rating schema fields here
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  translationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Translation'
+  },
+  rating: Number,
+ 
 });
 
 // Define schema for feedback
 const feedbackSchema = new mongoose.Schema({
-  // Define feedback schema fields here
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  translationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Translation'
+  },
+  feedbackText: String,
+
 });
 
 // Define schema for messages
 const messageSchema = new mongoose.Schema({
-  // Define message schema fields here
+  senderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  receiverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  // Add other fields as needed
 });
 
-// Define schema for admins
+
 const adminSchema = new mongoose.Schema({
-  // Define admin schema fields here
+  username: {
+    type: String,
+    required: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  // Add other fields as needed
 });
 
 // Define schema for payments
@@ -73,9 +121,43 @@ const paymentSchema = new mongoose.Schema({
   },
   amount: Number,
   status: String,
+
+ 
+});
+ // Define schema for history
+const historySchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  translationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Translation',
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  originalText: {
+    type: String,
+    required: true
+  },
+  translatedText: {
+    type: String,
+    required: true
+  },
+  languageFrom: {
+    type: String,
+    required: true
+  },
+  languageTo: {
+    type: String,
+    required: true
+  },
   // Add other fields as needed
 });
-
 // Create models
 const User = mongoose.model('User', userSchema);
 const Blog = mongoose.model('Blog', blogSchema);
@@ -87,5 +169,7 @@ const Feedback = mongoose.model('Feedback', feedbackSchema);
 const Message = mongoose.model('Message', messageSchema);
 const Admin = mongoose.model('Admin', adminSchema);
 const Payment = mongoose.model('Payment', paymentSchema);
+const History = mongoose.model('History', historySchema);
 
-module.exports = { User, Blog, Product, Order, Translation, Rating, Feedback, Message, Admin, Payment };
+
+module.exports = { User, Blog, Product, Order, Translation, Rating, Feedback, Message, Admin, Payment, History };

@@ -1,13 +1,17 @@
 const express = require("express");
-const { Server } = require("socket.io");
 const cors = require("cors");
+const app = express();
+const jwt = require('jsonwebtoken');
 require("dotenv").config();
+const { Server } = require("socket.io");
+const cookieParser = require('cookie-parser')
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const http = require("http");
 const socketIo = require("socket.io");
 
-const app = express();
+
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -17,8 +21,18 @@ const io = new Server(server, {
 });
 
 //MIADLEWERE
-app.use(cors());
+app.use(cors(
+  {
+      origin: [
+          'http://localhost:5173'
+          
+          
+      ],
+      credentials: true
+  }
+))
 app.use(express.json());
+app.use(cookieParser())
 
 const port = process.env.PORT || 5000;
 
@@ -60,6 +74,32 @@ async function run() {
     const feedbackCollection = client.db("E-Translator").collection("feedback");
 
     const tran_id = new ObjectId().toString();
+
+
+
+    // auth api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+      res.cookie('token', token, {
+        httpOnly: true,
+        // secure: process.env.NODE_ENV === 'production',
+        // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+        secure: true,
+        sameSite: 'none'
+      })
+      res.send({ success: true })
+      // res.send(user)
+
+    })
+    app.post('/logout', async (req, res) => {
+      const user = req.body
+      console.log('loging out', user);
+      res.clearCookie('token', { maxAge: 0 }).send({ success: true })
+    })
+
+
 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
@@ -131,17 +171,6 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/rating", async (req, res) => {
-      const data = req.body;
-      const result = await ratingCollection.insertOne(data);
-      res.send(result);
-    });
-
-    app.post("/feedback", async (req, res) => {
-      const data = req.body;
-      const result = await feedbackCollection.insertOne(data);
-      res.send(result);
-    });
 
     app.get("/users", async (req, res) => {
       const result = await usersInfocollection.find().toArray();
@@ -166,6 +195,21 @@ async function run() {
       const result = await usersInfocollection.updateOne(filter, updatedoc);
       res.send(result);
     });
+
+
+    app.post("/rating", async (req, res) => {
+      const data = req.body;
+      const result = await ratingCollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.post("/feedback", async (req, res) => {
+      const data = req.body;
+      const result = await feedbackCollection.insertOne(data);
+      res.send(result);
+    });
+
+
 
     //------------------------------------------------------------------------
     //                        blogs info part
@@ -324,6 +368,12 @@ app.listen(port, () => {
 
 
 
+
+
+
+
+
+
 // const express = require("express");
 // const cors = require("cors");
 // const mongoose = require('mongoose');
@@ -351,10 +401,7 @@ app.listen(port, () => {
 
 // // // mongoose.connect(uri);
 
-// // mongoose.connect(uri)
-// //   .then(() => console.log('MongoDB Connected'))
-// //   .catch(err => console.error('MongoDB Connection Error:', err));
-// // Connect to MongoDB using Mongoose
+
 // mongoose.connect(uri);
 // const db = mongoose.connection;
 // db.on('error', console.error.bind(console, 'MongoDB connection error:'));
@@ -410,6 +457,26 @@ app.listen(port, () => {
 // });
 
 // // Routes
+// app.post("/api/history", async (req, res) => {
+//   try {
+//     const translation = req.body;
+//     const result = await Translation.create(translation);
+//     res.status(201).json(result);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+// app.get("/api/history", async (req, res) => {
+//   try {
+//     const translations = await Translation.find().sort({ createdAt: -1 }).exec();
+//     res.json(translations);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 // // Messages Routes
 // app.post("/messages", async (req, res) => {
@@ -531,8 +598,8 @@ app.listen(port, () => {
 //       total_amount: product.price,
 //       currency: "BDT",
 //       tran_id: tran_id,
-//       success_url: `http://localhost:5174/payment/success/${tran_id}`,
-//       fail_url: `http://localhost:5174/payment/fail/${tran_id}`,
+//       success_url: `http://localhost:5173/payment/success/${tran_id}`,
+//       fail_url: `http://localhost:5173/payment/fail/${tran_id}`,
 //       cancel_url: 'http://localhost:3030/cancel',
 //       ipn_url: 'http://localhost:3030/ipn',
 //       shipping_method: 'Courier',
@@ -584,7 +651,7 @@ app.listen(port, () => {
 //       { paidStatus: true }
 //     );
 //     if (result.modifiedCount > 0) {
-//       res.redirect(`http://localhost:5174/payment/success/${tranId}`);
+//       res.redirect(`http://localhost:5173/payment/success/${tranId}`);
 //     }
 //   } catch (error) {
 //     console.error(error);
@@ -598,7 +665,7 @@ app.listen(port, () => {
 //     const tranId = req.params.tranId;
 //     const result = await Order.deleteOne({ transactionId: tranId });
 //     if (result.deletedCount) {
-//       res.redirect(`http://localhost:5174/payment/fail/${tranId}`);
+//       res.redirect(`http://localhost:5173/payment/fail/${tranId}`);
 //     }
 //   } catch (error) {
 //     console.error(error);
@@ -612,3 +679,6 @@ app.listen(port, () => {
 // server.listen(port, () => {
 //   console.log(`Server is running on port ${port}`);
 // });
+
+
+

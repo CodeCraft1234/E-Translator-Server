@@ -3,11 +3,12 @@ const cors = require("cors");
 const app = express();
 const jwt = require('jsonwebtoken');
 require("dotenv").config();
+const http = require("http");
 const { Server } = require("socket.io");
 const cookieParser = require('cookie-parser')
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const http = require("http");
+
 const socketIo = require("socket.io");
 
 
@@ -23,12 +24,12 @@ const io = new Server(server, {
 //MIADLEWERE
 app.use(cors(
   {
-      origin: [
-          'http://localhost:5173'
-          
-          
-      ],
-      credentials: true
+    origin: [
+      'http://localhost:5173'
+
+
+    ],
+    credentials: true
   }
 ))
 app.use(express.json());
@@ -69,10 +70,28 @@ async function run() {
       .collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
+    const translationsuggestion = client.db("E-Translator").collection("suggestions");
 
     const tran_id = new ObjectId().toString();
 
 
+    // suggestions api
+
+    app.get('/api/suggestions', async (req, res) => {
+      try {
+
+        const data = await translationsuggestion.findOne({});
+        const suggestions = data.translation_suggestions;
+      
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+
+        console.log(formattedSuggestions);
+        res.json(formattedSuggestions);
+      } catch (error) {
+        console.error('Error fetching translation suggestions:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
 
     // auth api
     app.post('/jwt', async (req, res) => {
@@ -119,6 +138,7 @@ async function run() {
     server.listen(5001, () => {
       console.log("SOCKET.IO SERVER RUNNING");
     });
+
 
     //------------------------------------------------------------------------
     //                        translation history part

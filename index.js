@@ -1,17 +1,15 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const http = require("http");
 const { Server } = require("socket.io");
-const cookieParser = require('cookie-parser')
+const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const socketIo = require("socket.io");
-
-
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -22,6 +20,14 @@ const io = new Server(server, {
 });
 
 //MIADLEWERE
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+
 app.use(cors(
   {
     origin: [
@@ -32,8 +38,9 @@ app.use(cors(
     credentials: true
   }
 ))
+
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 
 const port = process.env.PORT || 5000;
 
@@ -78,6 +85,7 @@ async function run() {
     const tran_id = new ObjectId().toString();
 
 
+
     // suggestions api
 
     app.get('/api/suggestions', async (req, res) => {
@@ -96,29 +104,29 @@ async function run() {
       }
     });
 
+
     // auth api
-    app.post('/jwt', async (req, res) => {
-      const user = req.body
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
       console.log(user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
-      res.cookie('token', token, {
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.cookie("token", token, {
         httpOnly: true,
         // secure: process.env.NODE_ENV === 'production',
         // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         secure: true,
-        sameSite: 'none'
-      })
-      res.send({ success: true })
+        sameSite: "none",
+      });
+      res.send({ success: true });
       // res.send(user)
-
-    })
-    app.post('/logout', async (req, res) => {
-      const user = req.body
-      console.log('loging out', user);
-      res.clearCookie('token', { maxAge: 0 }).send({ success: true })
-    })
-
-
+    });
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("loging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
@@ -182,6 +190,18 @@ async function run() {
       }
     });
 
+    app.delete("/api/history/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await translationCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting translation history:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
     //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
@@ -191,27 +211,22 @@ async function run() {
       res.send(result);
     });
 
-
-
     app.post("/rating", async (req, res) => {
       const data = req.body;
       const result = await ratingCollection.insertOne(data);
       res.send(result);
     });
 
-
     app.get("/rating", async (req, res) => {
       const result = await ratingCollection.find().toArray();
       res.send(result);
     });
-
 
     app.post("/feedback", async (req, res) => {
       const data = req.body;
       const result = await feedbackCollection.insertOne(data);
       res.send(result);
     });
-
 
     app.get("/users", async (req, res) => {
       const result = await usersInfocollection.find().toArray();
@@ -237,7 +252,6 @@ async function run() {
       res.send(result);
     });
 
-
     app.post("/rating", async (req, res) => {
       const data = req.body;
       const result = await ratingCollection.insertOne(data);
@@ -249,8 +263,6 @@ async function run() {
       const result = await feedbackCollection.insertOne(data);
       res.send(result);
     });
-
-
 
     //------------------------------------------------------------------------
     //                        blogs info part
@@ -413,14 +425,6 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-
-
-
-
-
-
-
-
 // const express = require("express");
 // const cors = require("cors");
 // const mongoose = require('mongoose');
@@ -447,7 +451,6 @@ app.listen(port, () => {
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net`;
 
 // // // mongoose.connect(uri);
-
 
 // mongoose.connect(uri);
 // const db = mongoose.connection;
@@ -726,6 +729,3 @@ app.listen(port, () => {
 // server.listen(port, () => {
 //   console.log(`Server is running on port ${port}`);
 // });
-
-
-

@@ -328,6 +328,10 @@ async function run() {
         res.send(result)
     })
 
+    //--------------------------------------------
+    //                ssl commerz
+    //-------------------------------------------
+
     //sslcommerz integration
     app.post("/order/:id", async (req, res) => {
       // console.log(req.body);

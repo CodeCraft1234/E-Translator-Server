@@ -67,12 +67,9 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
 
-    const usersInfocollection = client
-      .db("E-Translator")
-      .collection("usersInfo");
-    const blogsInfocollection = client
-      .db("E-Translator")
-      .collection("blogsInfo");
+    const usersInfocollection = client.db("E-Translator").collection("usersInfo");
+    const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
+    const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
     const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client
@@ -286,7 +283,6 @@ async function run() {
     app.get("/blogs/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      // const test=Test
       const result = await blogsInfocollection.findOne(filter);
       res.send(result);
     });
@@ -311,6 +307,26 @@ async function run() {
       const result = await blogsInfocollection.deleteOne(filter);
       res.send(result);
     });
+
+    //------------------------------------------------------
+    //------------------comment part------------------------
+    //-------------------------------------------------------
+    app.post("/blogComment", async (req, res) => {
+      const data = req.body;
+      const result = await commentsInfocollection.insertOne(data);
+      res.send(result);
+    });
+    app.get("/blogComment", async (req, res) => {
+      const result = await commentsInfocollection.find().toArray();
+      res.send(result);
+    });
+  
+    app.get('/blogComment/get/:id',async(req,res)=>{
+      const id=req.params.id
+      const filter={id:id}
+        const result=await commentsInfocollection.find(filter).toArray()
+        res.send(result)
+    })
 
     //sslcommerz integration
     app.post("/order/:id", async (req, res) => {

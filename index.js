@@ -1,16 +1,15 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const http = require("http");
 const { Server } = require("socket.io");
-const cookieParser = require('cookie-parser')
+const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const http = require("http");
+
 const socketIo = require("socket.io");
-
-
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -21,18 +20,27 @@ const io = new Server(server, {
 });
 
 //MIADLEWERE
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+
 app.use(cors(
   {
-      origin: [
-          'http://localhost:5173'
-          
-          
-      ],
-      credentials: true
+    origin: [
+      'http://localhost:5173'
+
+
+    ],
+    credentials: true
   }
 ))
+
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 
 const port = process.env.PORT || 5000;
 
@@ -59,12 +67,9 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
 
-    const usersInfocollection = client
-      .db("E-Translator")
-      .collection("usersInfo");
-    const blogsInfocollection = client
-      .db("E-Translator")
-      .collection("blogsInfo");
+    const usersInfocollection = client.db("E-Translator").collection("usersInfo");
+    const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
+    const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
     const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client
@@ -72,34 +77,53 @@ async function run() {
       .collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
+    const translationsuggestion = client.db("E-Translator").collection("suggestions");
 
     const tran_id = new ObjectId().toString();
 
 
 
+    // suggestions api
+
+    app.get('/api/suggestions', async (req, res) => {
+      try {
+
+        const data = await translationsuggestion.findOne({});
+        const suggestions = data.translation_suggestions;
+      
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+
+        console.log(formattedSuggestions);
+        res.json(formattedSuggestions);
+      } catch (error) {
+        console.error('Error fetching translation suggestions:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
+
     // auth api
-    app.post('/jwt', async (req, res) => {
-      const user = req.body
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
       console.log(user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
-      res.cookie('token', token, {
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.cookie("token", token, {
         httpOnly: true,
         // secure: process.env.NODE_ENV === 'production',
         // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         secure: true,
-        sameSite: 'none'
-      })
-      res.send({ success: true })
+        sameSite: "none",
+      });
+      res.send({ success: true });
       // res.send(user)
-
-    })
-    app.post('/logout', async (req, res) => {
-      const user = req.body
-      console.log('loging out', user);
-      res.clearCookie('token', { maxAge: 0 }).send({ success: true })
-    })
-
-
+    });
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("loging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
@@ -122,6 +146,7 @@ async function run() {
     server.listen(5001, () => {
       console.log("SOCKET.IO SERVER RUNNING");
     });
+
 
     //------------------------------------------------------------------------
     //                        translation history part
@@ -162,6 +187,18 @@ async function run() {
       }
     });
 
+    app.delete("/api/history/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await translationCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting translation history:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
     //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
@@ -171,27 +208,22 @@ async function run() {
       res.send(result);
     });
 
-
-
     app.post("/rating", async (req, res) => {
       const data = req.body;
       const result = await ratingCollection.insertOne(data);
       res.send(result);
     });
 
-
     app.get("/rating", async (req, res) => {
       const result = await ratingCollection.find().toArray();
       res.send(result);
     });
-
 
     app.post("/feedback", async (req, res) => {
       const data = req.body;
       const result = await feedbackCollection.insertOne(data);
       res.send(result);
     });
-
 
     app.get("/users", async (req, res) => {
       const result = await usersInfocollection.find().toArray();
@@ -217,7 +249,6 @@ async function run() {
       res.send(result);
     });
 
-
     app.post("/rating", async (req, res) => {
       const data = req.body;
       const result = await ratingCollection.insertOne(data);
@@ -229,8 +260,6 @@ async function run() {
       const result = await feedbackCollection.insertOne(data);
       res.send(result);
     });
-
-
 
     //------------------------------------------------------------------------
     //                        blogs info part
@@ -254,7 +283,6 @@ async function run() {
     app.get("/blogs/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      // const test=Test
       const result = await blogsInfocollection.findOne(filter);
       res.send(result);
     });
@@ -279,6 +307,30 @@ async function run() {
       const result = await blogsInfocollection.deleteOne(filter);
       res.send(result);
     });
+
+    //------------------------------------------------------
+    //------------------comment part------------------------
+    //-------------------------------------------------------
+    app.post("/blogComment", async (req, res) => {
+      const data = req.body;
+      const result = await commentsInfocollection.insertOne(data);
+      res.send(result);
+    });
+    app.get("/blogComment", async (req, res) => {
+      const result = await commentsInfocollection.find().toArray();
+      res.send(result);
+    });
+  
+    app.get('/blogComment/get/:id',async(req,res)=>{
+      const id=req.params.id
+      const filter={id:id}
+        const result=await commentsInfocollection.find(filter).toArray()
+        res.send(result)
+    })
+
+    //--------------------------------------------
+    //                ssl commerz
+    //-------------------------------------------
 
     //sslcommerz integration
     app.post("/order/:id", async (req, res) => {
@@ -393,14 +445,6 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-
-
-
-
-
-
-
-
 // const express = require("express");
 // const cors = require("cors");
 // const mongoose = require('mongoose');
@@ -427,7 +471,6 @@ app.listen(port, () => {
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net`;
 
 // // // mongoose.connect(uri);
-
 
 // mongoose.connect(uri);
 // const db = mongoose.connection;
@@ -706,6 +749,3 @@ app.listen(port, () => {
 // server.listen(port, () => {
 //   console.log(`Server is running on port ${port}`);
 // });
-
-
-

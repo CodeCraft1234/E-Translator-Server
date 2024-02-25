@@ -14,7 +14,7 @@ const socketIo = require("socket.io");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "https://etranslator.netlify.app",
     methods: ["GET", "POST"],
   },
 });
@@ -23,7 +23,7 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://etranslator.netlify.app"],
     credentials: true,
   })
 );
@@ -31,7 +31,7 @@ app.use(
 app.use(cors(
   {
     origin: [
-      'http://localhost:5173'
+      'https://etranslator.netlify.app'
 
 
     ],
@@ -402,7 +402,7 @@ async function run() {
 
         if (result.modifiedCount > 0) {
           res.redirect(
-            `http://localhost:5173/payment/success/${req.params.tranId}`
+            `https://etranslator.netlify.app/payment/success/${req.params.tranId}`
           );
         }
       });
@@ -420,7 +420,7 @@ async function run() {
 
         if (result.deletedCount) {
           res.redirect(
-            `http://localhost:5173/payment/fail/${req.params.tranId}`
+            `https://etranslator.netlify.app/payment/fail/${req.params.tranId}`
           );
         }
       });

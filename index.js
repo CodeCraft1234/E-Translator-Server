@@ -298,7 +298,7 @@ async function run() {
 
     //--------------------------------------------
     //                ssl commerz
-    //-------------------------------------------
+    //------------------------------------------------
 
     //sslcommerz integration
     app.post("/order/:id", async (req, res) => {
@@ -307,6 +307,7 @@ async function run() {
         _id: new ObjectId(req.body.productId),
       });
       const order = req.body;
+    
     
       const data = {
         total_amount: order.price,

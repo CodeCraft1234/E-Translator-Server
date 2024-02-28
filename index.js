@@ -83,9 +83,6 @@ async function run() {
     const tran_id = new ObjectId().toString();
 
 
-
-
-
     // auth api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -95,14 +92,20 @@ async function run() {
       });
       res.cookie("token", token, {
         httpOnly: true,
-        // secure: process.env.NODE_ENV === 'production',
-        // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         secure: true,
         sameSite: "none",
       });
       res.send({ success: true });
       // res.send(user)
     });
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("loging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
+
+
+    // Verify Token
 
     const verifyToken = (req, res, next) => {
       // console.log('inside verify token', req.headers.authorization);
@@ -119,9 +122,6 @@ async function run() {
       })
     }
 
-
-
-
     // use verify admin
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
@@ -136,7 +136,7 @@ async function run() {
 
 
     // Admin route
-    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+    app.get('/usersInfo/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
 
       if (email !== req.decoded.email) {
@@ -153,12 +153,44 @@ async function run() {
     })
 
 
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      console.log("loging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+     //------------------------------------------------------------------------
+    //                        users info part
+    //-----------------------------------------------------------------------
+    app.post("/users", async (req, res) => {
+      const data = req.body;
+      const result = await usersInfocollection.insertOne(data);
+      res.send(result);
     });
 
+    app.get("/users", async (req, res) => {
+      const result = await usersInfocollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await usersInfocollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedoc = {
+        $set: {
+          admin: true,
+        },
+      };
+      const result = await usersInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
+
+
+
+    // Socket io api
+
+  
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
 
@@ -253,14 +285,7 @@ async function run() {
       }
     });
 
-    //------------------------------------------------------------------------
-    //                        users info part
-    //-----------------------------------------------------------------------
-    app.post("/users", async (req, res) => {
-      const data = req.body;
-      const result = await usersInfocollection.insertOne(data);
-      res.send(result);
-    });
+   
 
     app.post("/rating", async (req, res) => {
       const data = req.body;
@@ -276,30 +301,6 @@ async function run() {
     app.post("/feedback", async (req, res) => {
       const data = req.body;
       const result = await feedbackCollection.insertOne(data);
-      res.send(result);
-    });
-
-    app.get("/users", async (req, res) => {
-      const result = await usersInfocollection.find().toArray();
-      res.send(result);
-    });
-
-    app.delete("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await usersInfocollection.deleteOne(filter);
-      res.send(result);
-    });
-
-    app.patch("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedoc = {
-        $set: {
-          admin: true,
-        },
-      };
-      const result = await usersInfocollection.updateOne(filter, updatedoc);
       res.send(result);
     });
 

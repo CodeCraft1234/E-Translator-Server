@@ -20,13 +20,14 @@ const io = new Server(server, {
 //MIADLEWERE
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://etranslator.netlify.app",
-    ],
+
+    // origin: ["https://etranslator.netlify.app"],
+    origin: ["http://localhost:5173"],
+
     credentials: true,
   })
 );
+
 
 app.use(express.json());
 app.use(cookieParser());
@@ -48,6 +49,11 @@ const store_passwd = process.env.STORE_PASS;
 const is_live = false; //true for live, false for sandbox
 async function run() {
   try {
+
+    // Connect the client to the server	(optional starting in v4.7)
+//     await client.connect();
+    // Send a ping to confirm a successful connection
+
     const usersInfocollection = client.db("E-Translator").collection("usersInfo");
     const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
     const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
@@ -61,8 +67,6 @@ async function run() {
     const translationsuggestion = client.db("E-Translator").collection("suggestions");
     const tran_id = new ObjectId().toString();
 
-   
-
     // auth api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -72,8 +76,6 @@ async function run() {
       });
       res.cookie("token", token, {
         httpOnly: true,
-        // secure: process.env.NODE_ENV === 'production',
-        // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         secure: true,
         sameSite: "none",
       });
@@ -85,47 +87,62 @@ async function run() {
       console.log("loging out", user);
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
-    io.on("connection", (socket) => {
-      console.log(`User connected: ${socket.id}`);
-      socket.on("join_room", (data) => {
-        socket.join(data);
-        console.log(`User with ID: ${socket.id} joined room: ${data}`);
-      });
-      socket.on("send_message", (data) => {
-        console.log(data);
-        socket.to(data.room).emit("receive_message", data);
-      });
-      socket.on("disconnect", () => {
-        console.log("User disconnected", socket.id);
-      });
-    });
-    server.listen(5001, () => {
-      console.log("SOCKET.IO SERVER RUNNING");
-    });
-    
-    //-----------------------------------------------------------------------
+
+
+    // Verify Token
+
+    const verifyToken = (req, res, next) => {
+      // console.log('inside verify token', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access' });
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'unauthorized access' })
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
+    // use verify admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersInfocollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      next();
+    }
+
+
+    // Admin route
+    app.get('/usersInfo/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+
+      const query = { email: email };
+      const user = await usersInfocollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+      }
+      res.send({ admin });
+    })
+
+
+     //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
     app.post("/users", async (req, res) => {
       const data = req.body;
       const result = await usersInfocollection.insertOne(data);
-      res.send(result);
-    });
-
-    app.post("/rating", async (req, res) => {
-      const data = req.body;
-      const result = await ratingCollection.insertOne(data);
-      res.send(result);
-    });
-
-    app.get("/rating", async (req, res) => {
-      const result = await ratingCollection.find().toArray();
-      res.send(result);
-    });
-
-    app.post("/feedback", async (req, res) => {
-      const data = req.body;
-      const result = await feedbackCollection.insertOne(data);
       res.send(result);
     });
 
@@ -150,6 +167,132 @@ async function run() {
         },
       };
       const result = await usersInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
+
+
+
+    // Socket io api
+
+ 
+    io.on("connection", (socket) => {
+      console.log(`User connected: ${socket.id}`);
+      socket.on("join_room", (data) => {
+        socket.join(data);
+        console.log(`User with ID: ${socket.id} joined room: ${data}`);
+      });
+      socket.on("send_message", (data) => {
+        console.log(data);
+        socket.to(data.room).emit("receive_message", data);
+      });
+      socket.on("disconnect", () => {
+        console.log("User disconnected", socket.id);
+      });
+    });
+    server.listen(5001, () => {
+      console.log("SOCKET.IO SERVER RUNNING");
+    });
+
+
+
+    // suggestions api
+
+    app.get('/api/suggestions', async (req, res) => {
+      try {
+
+        const data = await translationsuggestion.findOne({});
+        const suggestions = data.translation_suggestions;
+
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+
+        // console.log(formattedSuggestions);
+        res.json(formattedSuggestions);
+      } catch (error) {
+        console.error('Error fetching translation suggestions:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
+    //------------------------------------------------------------------------
+    //                        translation history part
+    //------------------------------------------------------------------------
+
+    app.post("/api/history", async (req, res) => {
+      try {
+        // await client.connect();
+
+        const translation = req.body;
+
+        const result = await translationCollection.insertOne(translation);
+
+        res.status(201).json(result.ops[0]);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      } finally {
+        // await client.close();
+      }
+    });
+
+
+
+    app.get("/api/history", async (req, res) => {
+      try {
+        // await client.connect();
+
+        const translations = await translationCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.json(translations);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      } finally {
+        // await client.close();
+      }
+    });
+
+    app.delete("/api/history/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await translationCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting translation history:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+   
+
+    
+    //-----------------------------------------------------------------------
+    //                        users info part
+    //-----------------------------------------------------------------------
+    app.post("/users", async (req, res) => {
+      const data = req.body;
+      const result = await usersInfocollection.insertOne(data);
+      res.send(result);
+    });
+
+
+    app.post("/rating", async (req, res) => {
+      const data = req.body;
+      const result = await ratingCollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/rating", async (req, res) => {
+      const result = await ratingCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/feedback", async (req, res) => {
+      const data = req.body;
+      const result = await feedbackCollection.insertOne(data);
       res.send(result);
     });
 
@@ -243,12 +386,12 @@ async function run() {
       const result = await commentsInfocollection.find().toArray();
       res.send(result);
     });
-  
-    app.get('/blogComment/get/:id',async(req,res)=>{
-      const id=req.params.id
-      const filter={id:id}
-        const result=await commentsInfocollection.find(filter).toArray()
-        res.send(result)
+
+    app.get('/blogComment/get/:id', async (req, res) => {
+      const id = req.params.id
+      const filter = { id: id }
+      const result = await commentsInfocollection.find(filter).toArray()
+      res.send(result)
     })
 
 
@@ -257,7 +400,7 @@ async function run() {
     //------------------------------------------------------------------------
     app.post("/api/history", async (req, res) => {
       try {
-        await client.connect();
+      
         const translation = req.body;
         const result = await translationCollection.insertOne(translation);
         res.status(201).json(result.ops[0]);
@@ -265,12 +408,11 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-        await client.close();
+      
       }
     });
     app.get("/api/history", async (req, res) => {
       try {
-        await client.connect();
         const translations = await translationCollection
           .find()
           .sort({ createdAt: -1 })
@@ -280,7 +422,7 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-        await client.close();
+     
       }
     });
     
@@ -408,9 +550,25 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //----------------------------------------------------------------
 //                    mongoose code
 //----------------------------------------------------------------
+
 
 // const express = require("express");
 // const cors = require("cors");

@@ -9,7 +9,6 @@ const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const socketIo = require("socket.io");
-
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -19,36 +18,23 @@ const io = new Server(server, {
 });
 
 //MIADLEWERE
-
 app.use(
   cors({
+
     // origin: ["https://etranslator.netlify.app"],
     origin: ["http://localhost:5173"],
+
     credentials: true,
   })
 );
 
-app.use(cors(
-  {
-    origin: [
-      // 'https://etranslator.netlify.app'
-      "http://localhost:5173",
-
-
-    ],
-    credentials: true
-  }
-))
 
 app.use(express.json());
 app.use(cookieParser());
 
 const port = process.env.PORT || 5000;
-
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -61,11 +47,11 @@ const client = new MongoClient(uri, {
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
 const is_live = false; //true for live, false for sandbox
-
 async function run() {
   try {
+
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+//     await client.connect();
     // Send a ping to confirm a successful connection
 
     const usersInfocollection = client.db("E-Translator").collection("usersInfo");
@@ -79,9 +65,7 @@ async function run() {
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
     const translationsuggestion = client.db("E-Translator").collection("suggestions");
-
     const tran_id = new ObjectId().toString();
-
 
     // auth api
     app.post("/jwt", async (req, res) => {
@@ -190,28 +174,25 @@ async function run() {
 
     // Socket io api
 
-  
+ 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
-
       socket.on("join_room", (data) => {
         socket.join(data);
         console.log(`User with ID: ${socket.id} joined room: ${data}`);
       });
-
       socket.on("send_message", (data) => {
         console.log(data);
         socket.to(data.room).emit("receive_message", data);
       });
-
       socket.on("disconnect", () => {
         console.log("User disconnected", socket.id);
       });
     });
-
     server.listen(5001, () => {
       console.log("SOCKET.IO SERVER RUNNING");
     });
+
 
 
     // suggestions api
@@ -287,6 +268,17 @@ async function run() {
 
    
 
+    
+    //-----------------------------------------------------------------------
+    //                        users info part
+    //-----------------------------------------------------------------------
+    app.post("/users", async (req, res) => {
+      const data = req.body;
+      const result = await usersInfocollection.insertOne(data);
+      res.send(result);
+    });
+
+
     app.post("/rating", async (req, res) => {
       const data = req.body;
       const result = await ratingCollection.insertOne(data);
@@ -319,6 +311,7 @@ async function run() {
     //------------------------------------------------------------------------
     //                        blogs info part
     //-----------------------------------------------------------------------
+
     app.post("/blogs", async (req, res) => {
       const data = req.body;
       const result = await blogsInfocollection.insertOne(data);
@@ -363,6 +356,23 @@ async function run() {
       res.send(result);
     });
 
+    //---------------------------------------------------------
+     // suggestions api
+     //---------------------------------------------------
+    
+     app.get('/api/suggestions', async (req, res) => {
+      try {
+        const data = await translationsuggestion.findOne({});
+        const suggestions = data.translation_suggestions;
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+        res.json(formattedSuggestions);
+      } catch (error) {
+        console.error('Error fetching translation suggestions:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
+
     //------------------------------------------------------
     //------------------comment part------------------------
     //-------------------------------------------------------
@@ -371,6 +381,7 @@ async function run() {
       const result = await commentsInfocollection.insertOne(data);
       res.send(result);
     });
+
     app.get("/blogComment", async (req, res) => {
       const result = await commentsInfocollection.find().toArray();
       res.send(result);
@@ -383,9 +394,53 @@ async function run() {
       res.send(result)
     })
 
-    //--------------------------------------------
+
+    //------------------------------------------------------------------------
+    //                        translation history part
+    //------------------------------------------------------------------------
+    app.post("/api/history", async (req, res) => {
+      try {
+      
+        const translation = req.body;
+        const result = await translationCollection.insertOne(translation);
+        res.status(201).json(result.ops[0]);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      } finally {
+      
+      }
+    });
+    app.get("/api/history", async (req, res) => {
+      try {
+        const translations = await translationCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .toArray();
+        res.json(translations);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+      } finally {
+     
+      }
+    });
+    
+    app.delete("/api/history/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await translationCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting translation history:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+    //------------------------------------------------
     //                ssl commerz
-    //-------------------------------------------
+    //------------------------------------------------
 
     //sslcommerz integration
     app.post("/order/:id", async (req, res) => {
@@ -394,8 +449,8 @@ async function run() {
         _id: new ObjectId(req.body.productId),
       });
       const order = req.body;
-      // console.log(product);
-
+    
+    
       const data = {
         total_amount: order.price,
         currency: "BDT",
@@ -432,18 +487,14 @@ async function run() {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
-
         const finalOrder = {
           product,
           paidStatus: false,
           tranjectionId: tran_id,
         };
-
         const result = orderCollection.insertOne(finalOrder);
-
         console.log("Redirecting to: ", GatewayPageURL);
       });
-
       app.post("/payment/success/:tranId", async (req, res) => {
         // console.log(req.params.tranId);
         const result = await orderCollection.updateOne(
@@ -463,7 +514,6 @@ async function run() {
       });
 
       app.post("/payment/fail/:tranId", async (req, res) => {
-        // console.log(req.params.tranId);
         const result = await orderCollection.deleteOne(
           { tranjectionId: req.params.tranId },
           {
@@ -481,13 +531,13 @@ async function run() {
       });
     });
 
-    // await client.db("admin").command({ ping: 1 });
+    
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+   
   }
 }
 run().catch(console.dir);
@@ -512,6 +562,12 @@ app.listen(port, () => {
 
 
 
+
+
+
+//----------------------------------------------------------------
+//                    mongoose code
+//----------------------------------------------------------------
 
 
 // const express = require("express");

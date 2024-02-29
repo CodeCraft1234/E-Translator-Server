@@ -9,6 +9,7 @@ const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const socketIo = require("socket.io");
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -18,21 +19,50 @@ const io = new Server(server, {
 });
 
 //MIADLEWERE
-app.use(
-  cors({
-    // origin: ["https://etranslator.netlify.app"],
-    origin: ["http://localhost:5173"],
 
-    credentials: true,
-  })
-);
+app.use(cors(
+  {
+    origin: [
+      // 'https://etranslator.netlify.app'
+      "http://localhost:5173",
+
+
+    ],
+    credentials: true
+  }
+))
 
 app.use(express.json());
 app.use(cookieParser());
 
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: 'unauthorized access' });
+  }
+  // bearer token
+  const token = authorization.split(' ')[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ error: true, message: 'unauthorized access' })
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+
 const port = process.env.PORT || 5000;
+
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
+
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -45,10 +75,11 @@ const client = new MongoClient(uri, {
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
 const is_live = false; //true for live, false for sandbox
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    //     await client.connect();
+    await client.connect();
     // Send a ping to confirm a successful connection
 
     const usersInfocollection = client
@@ -67,127 +98,105 @@ async function run() {
       .collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
-    const translationsuggestion = client
-      .db("E-Translator")
-      .collection("suggestions");
+    const translationsuggestion = client.db("E-Translator").collection("suggestions");
+
     const tran_id = new ObjectId().toString();
+    ////////////////////////////////////////////////////////////////////////////
 
-    // auth api
-    app.post("/jwt", async (req, res) => {
+    app.post('/jwt', (req, res) => {
       const user = req.body;
-      console.log(user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-      });
-      res.send({ success: true });
-      // res.send(user)
-    });
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      console.log("loging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    });
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 
-    // Verify Token
+      res.send({ token })
+    })
 
-    const verifyToken = (req, res, next) => {
-      // console.log('inside verify token', req.headers.authorization);
-      if (!req.headers.authorization) {
-        return res.status(401).send({ message: "unauthorized access" });
-      }
-      const token = req.headers.authorization.split(" ")[1];
-      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if (err) {
-          return res.status(401).send({ message: "unauthorized access" });
-        }
-        req.decoded = decoded;
-        next();
-      });
-    };
-
-    // use verify admin
+    // Warning: use verifyJWT before using verifyAdmin
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = { email: email };
+      const query = { email: email }
       const user = await usersInfocollection.findOne(query);
-      const isAdmin = user?.role === "admin";
-      if (!isAdmin) {
-        return res.status(403).send({ message: "forbidden access" });
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
       }
       next();
-    };
+    }
 
-    // Admin route
-    app.get("/usersInfo/admin/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: "forbidden access" });
-      }
-
-      const query = { email: email };
-      const user = await usersInfocollection.findOne(query);
-      let admin = false;
-      if (user) {
-        admin = user?.role === "admin";
-      }
-      res.send({ admin });
-    });
-
-    //------------------------------------------------------------------------
-    //                        users info part
-    //-----------------------------------------------------------------------
-    app.post("/users", async (req, res) => {
-      const data = req.body;
-      const result = await usersInfocollection.insertOne(data);
-      res.send(result);
-    });
-
-    app.get("/users", async (req, res) => {
+    ///////////////////////////////////////////////////////////////////////////
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersInfocollection.find().toArray();
       res.send(result);
     });
 
-    app.delete("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const result = await usersInfocollection.deleteOne(filter);
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user?.email }
+      const existingUser = await usersInfocollection.findOne(query);
+
+      if (existingUser) {
+        return res.send({ message: 'user already exists' })
+      }
+
+      const result = await usersInfocollection.insertOne(user);
       res.send(result);
     });
 
-    app.patch("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedoc = {
-        $set: {
-          admin: true,
-        },
-      };
-      const result = await usersInfocollection.updateOne(filter, updatedoc);
-      res.send(result);
-    });
+    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
 
-    // Socket io api
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+
+      const query = { email: email }
+      const user = await usersInfocollection.findOne(query);
+      const result = { admin: user?.role === 'admin' }
+      res.send(result);
+    })
+
+    ////////////////////////////////////////////////////////////////////////////
+
+
+    // auth api
+    // app.post("/jwt", async (req, res) => {
+    //   const user = req.body;
+    //   console.log(user);
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    //     expiresIn: "1h",
+    //   });
+    //   res.cookie("token", token, {
+    //     httpOnly: true,
+    //     // secure: process.env.NODE_ENV === 'production',
+    //     // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    //     secure: true,
+    //     sameSite: "none",
+    //   });
+    //   res.send({ success: true });
+    //   // res.send(user)
+    // });
+    // app.post("/logout", async (req, res) => {
+    //   const user = req.body;
+    //   console.log("loging out", user);
+    //   res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    // });
 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
+
       socket.on("join_room", (data) => {
         socket.join(data);
         console.log(`User with ID: ${socket.id} joined room: ${data}`);
       });
+
       socket.on("send_message", (data) => {
         console.log(data);
         socket.to(data.room).emit("receive_message", data);
       });
+
       socket.on("disconnect", () => {
         console.log("User disconnected", socket.id);
       });
     });
+
     server.listen(5001, () => {
       console.log("SOCKET.IO SERVER RUNNING");
     });
@@ -225,6 +234,7 @@ async function run() {
         const result = await translationCollection.insertOne(translation);
 
         res.status(201).json(result.ops[0]);
+        
       } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -232,6 +242,8 @@ async function run() {
         // await client.close();
       }
     });
+  
+  
 
     app.get("/api/history", async (req, res) => {
       try {
@@ -263,14 +275,14 @@ async function run() {
       }
     });
 
-    //-----------------------------------------------------------------------
+    //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
-    app.post("/users", async (req, res) => {
-      const data = req.body;
-      const result = await usersInfocollection.insertOne(data);
-      res.send(result);
-    });
+    // app.post("/users", async (req, res) => {
+    //   const data = req.body;
+    //   const result = await usersInfocollection.insertOne(data);
+    //   res.send(result);
+    // });
 
     app.post("/rating", async (req, res) => {
       const data = req.body;
@@ -289,6 +301,30 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/users", async (req, res) => {
+    //   const result = await usersInfocollection.find().toArray();
+    //   res.send(result);
+    // });
+
+    app.delete("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await usersInfocollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    app.patch("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedoc = {
+        $set: {
+          role: 'admin'
+        },
+      };
+      const result = await usersInfocollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
+
     app.post("/rating", async (req, res) => {
       const data = req.body;
       const result = await ratingCollection.insertOne(data);
@@ -304,8 +340,7 @@ async function run() {
     //------------------------------------------------------------------------
     //                        blogs info part
     //-----------------------------------------------------------------------
-
-    app.post("/blogs", async (req, res) => {
+    app.post("/blogs",verifyJWT, verifyAdmin, async (req, res) => {
       const data = req.body;
       const result = await blogsInfocollection.insertOne(data);
       res.send(result);
@@ -328,7 +363,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/blogs/:id", async (req, res) => {
+    app.patch("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const body = req.body;
@@ -342,30 +377,11 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/blogs/:id", async (req, res) => {
+    app.delete("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await blogsInfocollection.deleteOne(filter);
       res.send(result);
-    });
-
-    //---------------------------------------------------------
-    // suggestions api
-    //---------------------------------------------------
-
-    app.get("/api/suggestions", async (req, res) => {
-      try {
-        const data = await translationsuggestion.findOne({});
-        const suggestions = data.translation_suggestions;
-        const formattedSuggestions = suggestions.map(({ letter, words }) => ({
-          letter,
-          words,
-        }));
-        res.json(formattedSuggestions);
-      } catch (error) {
-        console.error("Error fetching translation suggestions:", error);
-        res.status(500).json({ error: "Internal server error" });
-      }
     });
 
     //------------------------------------------------------
@@ -376,62 +392,21 @@ async function run() {
       const result = await commentsInfocollection.insertOne(data);
       res.send(result);
     });
-
     app.get("/blogComment", async (req, res) => {
       const result = await commentsInfocollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/blogComment/get/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { id: id };
-      const result = await commentsInfocollection.find(filter).toArray();
-      res.send(result);
-    });
+    app.get('/blogComment/get/:id', async (req, res) => {
+      const id = req.params.id
+      const filter = { id: id }
+      const result = await commentsInfocollection.find(filter).toArray()
+      res.send(result)
+    })
 
-    //------------------------------------------------------------------------
-    //                        translation history part
-    //------------------------------------------------------------------------
-    app.post("/api/history", async (req, res) => {
-      try {
-        const translation = req.body;
-        const result = await translationCollection.insertOne(translation);
-        res.status(201).json(result.ops[0]);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-      } finally {
-      }
-    });
-    app.get("/api/history", async (req, res) => {
-      try {
-        const translations = await translationCollection
-          .find()
-          .sort({ createdAt: -1 })
-          .toArray();
-        res.json(translations);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Internal Server Error" });
-      } finally {
-      }
-    });
-
-    app.delete("/api/history/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await translationCollection.deleteOne(query);
-        res.send(result);
-      } catch (error) {
-        console.error("Error deleting translation history:", error);
-        res.status(500).send("Internal Server Error");
-      }
-    });
-
-    //------------------------------------------------
+    //--------------------------------------------
     //                ssl commerz
-    //------------------------------------------------
+    //-------------------------------------------
 
     //sslcommerz integration
     app.post("/order/:id", async (req, res) => {
@@ -440,6 +415,7 @@ async function run() {
         _id: new ObjectId(req.body.productId),
       });
       const order = req.body;
+      // console.log(product);
 
       const data = {
         total_amount: order.price,
@@ -477,12 +453,15 @@ async function run() {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
+
         const finalOrder = {
           product,
           paidStatus: false,
           tranjectionId: tran_id,
         };
+
         const result = orderCollection.insertOne(finalOrder);
+
         console.log("Redirecting to: ", GatewayPageURL);
       });
 
@@ -518,6 +497,7 @@ async function run() {
       });
 
       app.post("/payment/fail/:tranId", async (req, res) => {
+        // console.log(req.params.tranId);
         const result = await orderCollection.deleteOne(
           { tranjectionId: req.params.tranId },
           {
@@ -535,10 +515,13 @@ async function run() {
       });
     });
 
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
   }
 }
 run().catch(console.dir);
@@ -551,9 +534,19 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-//----------------------------------------------------------------
-//                    mongoose code
-//----------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // const express = require("express");
 // const cors = require("cors");

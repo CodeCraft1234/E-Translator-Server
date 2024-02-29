@@ -28,18 +28,6 @@ app.use(
   })
 );
 
-app.use(cors(
-  {
-    origin: [
-      // 'https://etranslator.netlify.app'
-      "http://localhost:5173",
-
-
-    ],
-    credentials: true
-  }
-))
-
 app.use(express.json());
 app.use(cookieParser());
 
@@ -87,7 +75,7 @@ const is_live = false; //true for live, false for sandbox
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
 
     const usersInfocollection = client.db("E-Translator").collection("usersInfo");

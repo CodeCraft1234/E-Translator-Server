@@ -20,14 +20,12 @@ const io = new Server(server, {
 //MIADLEWERE
 app.use(
   cors({
-
     // origin: ["https://etranslator.netlify.app"],
     origin: ["http://localhost:5173"],
 
     credentials: true,
   })
 );
-
 
 app.use(express.json());
 app.use(cookieParser());
@@ -49,14 +47,19 @@ const store_passwd = process.env.STORE_PASS;
 const is_live = false; //true for live, false for sandbox
 async function run() {
   try {
-
     // Connect the client to the server	(optional starting in v4.7)
-//     await client.connect();
+    //     await client.connect();
     // Send a ping to confirm a successful connection
 
-    const usersInfocollection = client.db("E-Translator").collection("usersInfo");
-    const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
-    const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
+    const usersInfocollection = client
+      .db("E-Translator")
+      .collection("usersInfo");
+    const blogsInfocollection = client
+      .db("E-Translator")
+      .collection("blogsInfo");
+    const commentsInfocollection = client
+      .db("E-Translator")
+      .collection("commentsInfo");
     const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client
@@ -64,7 +67,9 @@ async function run() {
       .collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
-    const translationsuggestion = client.db("E-Translator").collection("suggestions");
+    const translationsuggestion = client
+      .db("E-Translator")
+      .collection("suggestions");
     const tran_id = new ObjectId().toString();
 
     // auth api
@@ -88,56 +93,53 @@ async function run() {
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
-
     // Verify Token
 
     const verifyToken = (req, res, next) => {
       // console.log('inside verify token', req.headers.authorization);
       if (!req.headers.authorization) {
-        return res.status(401).send({ message: 'unauthorized access' });
+        return res.status(401).send({ message: "unauthorized access" });
       }
-      const token = req.headers.authorization.split(' ')[1];
+      const token = req.headers.authorization.split(" ")[1];
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
-          return res.status(401).send({ message: 'unauthorized access' })
+          return res.status(401).send({ message: "unauthorized access" });
         }
         req.decoded = decoded;
         next();
-      })
-    }
+      });
+    };
 
     // use verify admin
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
       const user = await usersInfocollection.findOne(query);
-      const isAdmin = user?.role === 'admin';
+      const isAdmin = user?.role === "admin";
       if (!isAdmin) {
-        return res.status(403).send({ message: 'forbidden access' });
+        return res.status(403).send({ message: "forbidden access" });
       }
       next();
-    }
-
+    };
 
     // Admin route
-    app.get('/usersInfo/admin/:email', verifyToken, async (req, res) => {
+    app.get("/usersInfo/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
 
       if (email !== req.decoded.email) {
-        return res.status(403).send({ message: 'forbidden access' })
+        return res.status(403).send({ message: "forbidden access" });
       }
 
       const query = { email: email };
       const user = await usersInfocollection.findOne(query);
       let admin = false;
       if (user) {
-        admin = user?.role === 'admin';
+        admin = user?.role === "admin";
       }
       res.send({ admin });
-    })
+    });
 
-
-     //------------------------------------------------------------------------
+    //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
     app.post("/users", async (req, res) => {
@@ -170,11 +172,8 @@ async function run() {
       res.send(result);
     });
 
-
-
     // Socket io api
 
- 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
       socket.on("join_room", (data) => {
@@ -193,23 +192,23 @@ async function run() {
       console.log("SOCKET.IO SERVER RUNNING");
     });
 
-
-
     // suggestions api
 
-    app.get('/api/suggestions', async (req, res) => {
+    app.get("/api/suggestions", async (req, res) => {
       try {
-
         const data = await translationsuggestion.findOne({});
         const suggestions = data.translation_suggestions;
 
-        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({
+          letter,
+          words,
+        }));
 
         // console.log(formattedSuggestions);
         res.json(formattedSuggestions);
       } catch (error) {
-        console.error('Error fetching translation suggestions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error fetching translation suggestions:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
     });
 
@@ -233,8 +232,6 @@ async function run() {
         // await client.close();
       }
     });
-
-
 
     app.get("/api/history", async (req, res) => {
       try {
@@ -266,9 +263,6 @@ async function run() {
       }
     });
 
-   
-
-    
     //-----------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
@@ -277,7 +271,6 @@ async function run() {
       const result = await usersInfocollection.insertOne(data);
       res.send(result);
     });
-
 
     app.post("/rating", async (req, res) => {
       const data = req.body;
@@ -357,21 +350,23 @@ async function run() {
     });
 
     //---------------------------------------------------------
-     // suggestions api
-     //---------------------------------------------------
-    
-     app.get('/api/suggestions', async (req, res) => {
+    // suggestions api
+    //---------------------------------------------------
+
+    app.get("/api/suggestions", async (req, res) => {
       try {
         const data = await translationsuggestion.findOne({});
         const suggestions = data.translation_suggestions;
-        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({
+          letter,
+          words,
+        }));
         res.json(formattedSuggestions);
       } catch (error) {
-        console.error('Error fetching translation suggestions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error fetching translation suggestions:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
     });
-
 
     //------------------------------------------------------
     //------------------comment part------------------------
@@ -387,20 +382,18 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/blogComment/get/:id', async (req, res) => {
-      const id = req.params.id
-      const filter = { id: id }
-      const result = await commentsInfocollection.find(filter).toArray()
-      res.send(result)
-    })
-
+    app.get("/blogComment/get/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { id: id };
+      const result = await commentsInfocollection.find(filter).toArray();
+      res.send(result);
+    });
 
     //------------------------------------------------------------------------
     //                        translation history part
     //------------------------------------------------------------------------
     app.post("/api/history", async (req, res) => {
       try {
-      
         const translation = req.body;
         const result = await translationCollection.insertOne(translation);
         res.status(201).json(result.ops[0]);
@@ -408,7 +401,6 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-      
       }
     });
     app.get("/api/history", async (req, res) => {
@@ -422,10 +414,9 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-     
       }
     });
-    
+
     app.delete("/api/history/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -449,8 +440,7 @@ async function run() {
         _id: new ObjectId(req.body.productId),
       });
       const order = req.body;
-    
-    
+
       const data = {
         total_amount: order.price,
         currency: "BDT",
@@ -495,10 +485,24 @@ async function run() {
         const result = orderCollection.insertOne(finalOrder);
         console.log("Redirecting to: ", GatewayPageURL);
       });
+
+      const processedTransactions = new Set();
+
       app.post("/payment/success/:tranId", async (req, res) => {
-        // console.log(req.params.tranId);
+        const tranId = req.params.tranId;
+
+        if (processedTransactions.has(tranId)) {
+          // Transaction already processed, handle accordingly 
+          res.redirect(`http://localhost:5173/payment/success/${tranId}`);
+          return;
+        }
+
+        // Add transaction ID to the set to mark it as processed
+        processedTransactions.add(tranId);
+
+        // Continue with success logic
         const result = await orderCollection.updateOne(
-          { tranjectionId: req.params.tranId },
+          { tranjectionId: tranId },
           {
             $set: {
               paidStatus: true,
@@ -531,13 +535,10 @@ async function run() {
       });
     });
 
-    
-
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-   
   }
 }
 run().catch(console.dir);
@@ -550,25 +551,9 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //----------------------------------------------------------------
 //                    mongoose code
 //----------------------------------------------------------------
-
 
 // const express = require("express");
 // const cors = require("cors");

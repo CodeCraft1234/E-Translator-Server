@@ -20,14 +20,6 @@ const io = new Server(server, {
 
 //MIADLEWERE
 
-app.use(
-  cors({
-    // origin: ["https://etranslator.netlify.app"],
-    origin: ["http://localhost:5173"],
-    credentials: true,
-  })
-);
-
 app.use(cors(
   {
     origin: [
@@ -90,9 +82,15 @@ async function run() {
     await client.connect();
     // Send a ping to confirm a successful connection
 
-    const usersInfocollection = client.db("E-Translator").collection("usersInfo");
-    const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
-    const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
+    const usersInfocollection = client
+      .db("E-Translator")
+      .collection("usersInfo");
+    const blogsInfocollection = client
+      .db("E-Translator")
+      .collection("blogsInfo");
+    const commentsInfocollection = client
+      .db("E-Translator")
+      .collection("commentsInfo");
     const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client
@@ -203,22 +201,23 @@ async function run() {
       console.log("SOCKET.IO SERVER RUNNING");
     });
 
-
     // suggestions api
 
-    app.get('/api/suggestions', async (req, res) => {
+    app.get("/api/suggestions", async (req, res) => {
       try {
-
         const data = await translationsuggestion.findOne({});
         const suggestions = data.translation_suggestions;
 
-        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({
+          letter,
+          words,
+        }));
 
         // console.log(formattedSuggestions);
         res.json(formattedSuggestions);
       } catch (error) {
-        console.error('Error fetching translation suggestions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error fetching translation suggestions:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
     });
 
@@ -466,10 +465,23 @@ async function run() {
         console.log("Redirecting to: ", GatewayPageURL);
       });
 
+      const processedTransactions = new Set();
+
       app.post("/payment/success/:tranId", async (req, res) => {
-        // console.log(req.params.tranId);
+        const tranId = req.params.tranId;
+
+        if (processedTransactions.has(tranId)) {
+          // Transaction already processed, handle accordingly 
+          res.redirect(`http://localhost:5173/payment/success/${tranId}`);
+          return;
+        }
+
+        // Add transaction ID to the set to mark it as processed
+        processedTransactions.add(tranId);
+
+        // Continue with success logic
         const result = await orderCollection.updateOne(
-          { tranjectionId: req.params.tranId },
+          { tranjectionId: tranId },
           {
             $set: {
               paidStatus: true,

@@ -8,7 +8,6 @@ const { Server } = require("socket.io");
 const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
 const socketIo = require("socket.io");
 
 const server = http.createServer(app);
@@ -21,26 +20,40 @@ const io = new Server(server, {
 
 //MIADLEWERE
 
+
 app.use(
   cors({
-    origin: ["https://etranslator.netlify.app"],
+    // origin: ["https://etranslator.netlify.app"],
+    origin: ["http://localhost:5173"],
     credentials: true,
   })
 );
 
-app.use(cors(
-  {
-    origin: [
-      'https://etranslator.netlify.app'
-
-
-    ],
-    credentials: true
-  }
-))
 
 app.use(express.json());
 app.use(cookieParser());
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: 'unauthorized access' });
+  }
+  // bearer token
+  const token = authorization.split(' ')[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ error: true, message: 'unauthorized access' })
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
 
 const port = process.env.PORT || 5000;
 
@@ -64,12 +77,20 @@ const is_live = false; //true for live, false for sandbox
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
+
     // await client.connect();
     // Send a ping to confirm a successful connection
 
-    const usersInfocollection = client.db("E-Translator").collection("usersInfo");
-    const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
-    const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
+    const usersInfocollection = client
+      .db("E-Translator")
+      .collection("usersInfo");
+    const blogsInfocollection = client
+      .db("E-Translator")
+      .collection("blogsInfo");
+    const commentsInfocollection = client
+      .db("E-Translator")
+      .collection("commentsInfo");
+
     const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client
@@ -80,50 +101,83 @@ async function run() {
     const translationsuggestion = client.db("E-Translator").collection("suggestions");
 
     const tran_id = new ObjectId().toString();
+    ////////////////////////////////////////////////////////////////////////////
 
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 
+      res.send({ token })
+    })
 
-    // suggestions api
-
-    app.get('/api/suggestions', async (req, res) => {
-      try {
-
-        const data = await translationsuggestion.findOne({});
-        const suggestions = data.translation_suggestions;
-      
-        const formattedSuggestions = suggestions.map(({ letter, words }) => ({ letter, words }));
-
-        console.log(formattedSuggestions);
-        res.json(formattedSuggestions);
-      } catch (error) {
-        console.error('Error fetching translation suggestions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+    // Warning: use verifyJWT before using verifyAdmin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await usersInfocollection.findOne(query);
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
       }
+      next();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await usersInfocollection.find().toArray();
+      res.send(result);
     });
+
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user?.email }
+      const existingUser = await usersInfocollection.findOne(query);
+
+      if (existingUser) {
+        return res.send({ message: 'user already exists' })
+      }
+
+      const result = await usersInfocollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+
+      const query = { email: email }
+      const user = await usersInfocollection.findOne(query);
+      const result = { admin: user?.role === 'admin' }
+      res.send(result);
+    })
+
+    ////////////////////////////////////////////////////////////////////////////
 
 
     // auth api
-    app.post("/jwt", async (req, res) => {
-      const user = req.body;
-      console.log(user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
-      res.cookie("token", token, {
-        httpOnly: true,
-        // secure: process.env.NODE_ENV === 'production',
-        // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-        secure: true,
-        sameSite: "none",
-      });
-      res.send({ success: true });
-      // res.send(user)
-    });
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      console.log("loging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    });
+    // app.post("/jwt", async (req, res) => {
+    //   const user = req.body;
+    //   console.log(user);
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    //     expiresIn: "1h",
+    //   });
+    //   res.cookie("token", token, {
+    //     httpOnly: true,
+    //     // secure: process.env.NODE_ENV === 'production',
+    //     // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    //     secure: true,
+    //     sameSite: "none",
+    //   });
+    //   res.send({ success: true });
+    //   // res.send(user)
+    // });
+    // app.post("/logout", async (req, res) => {
+    //   const user = req.body;
+    //   console.log("loging out", user);
+    //   res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    // });
 
     io.on("connection", (socket) => {
       console.log(`User connected: ${socket.id}`);
@@ -148,30 +202,56 @@ async function run() {
     });
 
 
+    // suggestions api
+
+    app.get("/api/suggestions", async (req, res) => {
+      try {
+        const data = await translationsuggestion.findOne({});
+        const suggestions = data.translation_suggestions;
+
+        const formattedSuggestions = suggestions.map(({ letter, words }) => ({
+          letter,
+          words,
+        }));
+
+
+        // console.log(formattedSuggestions);
+        res.json(formattedSuggestions);
+      } catch (error) {
+
+        console.error("Error fetching translation suggestions:", error);
+        res.status(500).json({ error: "Internal server error" });
+
+      }
+    });
+
     //------------------------------------------------------------------------
     //                        translation history part
     //------------------------------------------------------------------------
 
     app.post("/api/history", async (req, res) => {
       try {
-        await client.connect();
+        // await client.connect();
 
         const translation = req.body;
 
         const result = await translationCollection.insertOne(translation);
 
         res.status(201).json(result.ops[0]);
+        
       } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-        await client.close();
+        // await client.close();
       }
     });
+  
+  
 
     app.get("/api/history", async (req, res) => {
       try {
-        await client.connect();
+        // await client.connect();
 
         const translations = await translationCollection
           .find()
@@ -183,7 +263,7 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-        await client.close();
+        // await client.close();
       }
     });
 
@@ -202,11 +282,7 @@ async function run() {
     //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
-    app.post("/users", async (req, res) => {
-      const data = req.body;
-      const result = await usersInfocollection.insertOne(data);
-      res.send(result);
-    });
+
 
     app.post("/rating", async (req, res) => {
       const data = req.body;
@@ -225,24 +301,21 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
-      const result = await usersInfocollection.find().toArray();
-      res.send(result);
-    });
 
-    app.delete("/users/:id", async (req, res) => {
+
+    app.delete("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await usersInfocollection.deleteOne(filter);
       res.send(result);
     });
 
-    app.patch("/users/:id", async (req, res) => {
+    app.patch("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedoc = {
         $set: {
-          admin: true,
+          role: 'admin'
         },
       };
       const result = await usersInfocollection.updateOne(filter, updatedoc);
@@ -264,7 +337,7 @@ async function run() {
     //------------------------------------------------------------------------
     //                        blogs info part
     //-----------------------------------------------------------------------
-    app.post("/blogs", async (req, res) => {
+    app.post("/blogs",verifyJWT, verifyAdmin, async (req, res) => {
       const data = req.body;
       const result = await blogsInfocollection.insertOne(data);
       res.send(result);
@@ -287,7 +360,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/blogs/:id", async (req, res) => {
+    app.patch("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const body = req.body;
@@ -301,7 +374,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/blogs/:id", async (req, res) => {
+    app.delete("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await blogsInfocollection.deleteOne(filter);
@@ -320,13 +393,22 @@ async function run() {
       const result = await commentsInfocollection.find().toArray();
       res.send(result);
     });
-  
-    app.get('/blogComment/get/:id',async(req,res)=>{
-      const id=req.params.id
-      const filter={id:id}
-        const result=await commentsInfocollection.find(filter).toArray()
-        res.send(result)
+
+    app.get('/blogComment/get/:id', async (req, res) => {
+      const id = req.params.id
+      const filter = { id: id }
+      const result = await commentsInfocollection.find(filter).toArray()
+      res.send(result)
     })
+
+
+    app.delete("/blogComment/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await commentsInfocollection.deleteOne(filter);
+      res.send(result);
+    });
+
 
     //--------------------------------------------
     //                ssl commerz
@@ -345,8 +427,8 @@ async function run() {
         total_amount: order.price,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `https://e-translator-server.vercel.app/payment/success/${tran_id}`,
-        fail_url: `https://e-translator-server.vercel.app/payment/fail/${tran_id}`,
+        success_url: `http://localhost:5000/payment/success/${tran_id}`,
+        fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -389,10 +471,25 @@ async function run() {
         console.log("Redirecting to: ", GatewayPageURL);
       });
 
+
+      const processedTransactions = new Set();
+
+
       app.post("/payment/success/:tranId", async (req, res) => {
-        // console.log(req.params.tranId);
+        const tranId = req.params.tranId;
+
+        if (processedTransactions.has(tranId)) {
+          // Transaction already processed, handle accordingly 
+          res.redirect(`http://localhost:5173/payment/success/${tranId}`);
+          return;
+        }
+
+        // Add transaction ID to the set to mark it as processed
+        processedTransactions.add(tranId);
+
+        // Continue with success logic
         const result = await orderCollection.updateOne(
-          { tranjectionId: req.params.tranId },
+          { tranjectionId: tranId },
           {
             $set: {
               paidStatus: true,
@@ -444,6 +541,20 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // const express = require("express");
 // const cors = require("cors");

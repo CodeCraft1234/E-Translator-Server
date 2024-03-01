@@ -23,7 +23,6 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    // origin: ["https://etranslator.netlify.app"],
     origin: ["https://etranslator.netlify.app"],
     credentials: true,
   })
@@ -386,8 +385,8 @@ async function run() {
         total_amount: order.price,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `https://e-translator-server.vercel.app/payment/success/${tran_id}`,
-        fail_url: `https://e-translator-server.vercel.app/payment/fail/${tran_id}`,
+        success_url: `https://etranslator.netlify.app/payment/success/${tran_id}`,
+        fail_url: `https://etranslator.netlify.app/payment/fail/${tran_id}`,
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",

@@ -77,6 +77,7 @@ const is_live = false; //true for live, false for sandbox
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
+
     // await client.connect();
     // Send a ping to confirm a successful connection
 
@@ -89,6 +90,7 @@ async function run() {
     const commentsInfocollection = client
       .db("E-Translator")
       .collection("commentsInfo");
+
     const productCollection = client.db("E-Translator").collection("products");
     const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client
@@ -199,6 +201,7 @@ async function run() {
       console.log("SOCKET.IO SERVER RUNNING");
     });
 
+
     // suggestions api
 
     app.get("/api/suggestions", async (req, res) => {
@@ -211,11 +214,14 @@ async function run() {
           words,
         }));
 
+
         // console.log(formattedSuggestions);
         res.json(formattedSuggestions);
       } catch (error) {
+
         console.error("Error fetching translation suggestions:", error);
         res.status(500).json({ error: "Internal server error" });
+
       }
     });
 
@@ -276,11 +282,7 @@ async function run() {
     //------------------------------------------------------------------------
     //                        users info part
     //-----------------------------------------------------------------------
-    // app.post("/users", async (req, res) => {
-    //   const data = req.body;
-    //   const result = await usersInfocollection.insertOne(data);
-    //   res.send(result);
-    // });
+
 
     app.post("/rating", async (req, res) => {
       const data = req.body;
@@ -299,10 +301,7 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/users", async (req, res) => {
-    //   const result = await usersInfocollection.find().toArray();
-    //   res.send(result);
-    // });
+
 
     app.delete("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
@@ -402,6 +401,15 @@ async function run() {
       res.send(result)
     })
 
+
+    app.delete("/blogComment/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await commentsInfocollection.deleteOne(filter);
+      res.send(result);
+    });
+
+
     //--------------------------------------------
     //                ssl commerz
     //-------------------------------------------
@@ -463,7 +471,9 @@ async function run() {
         console.log("Redirecting to: ", GatewayPageURL);
       });
 
+
       const processedTransactions = new Set();
+
 
       app.post("/payment/success/:tranId", async (req, res) => {
         const tranId = req.params.tranId;

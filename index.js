@@ -23,7 +23,10 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["https://etranslator.netlify.app"],
+    origin: [
+      "https://etranslator.netlify.app",
+      "http://localhost:5173"
+    ],
     credentials: true,
   })
 );
@@ -52,15 +55,10 @@ const verifyJWT = (req, res, next) => {
 }
 
 //------------------------------------------------------------------
-//------------------------------------------------------------------
+
 
 const port = process.env.PORT || 5000;
-
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -71,8 +69,7 @@ const client = new MongoClient(uri, {
 
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
-const is_live = false; //true for live, false for sandbox
-
+const is_live = false; 
 async function run() {
   try {
    
@@ -114,7 +111,7 @@ async function run() {
     //                         user data
     ///////////////////////////////////////////////////////////////////////////
 
-    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+    app.get('/users', async (req, res) => {
       const result = await usersInfocollection.find().toArray();
       res.send(result);
     });
@@ -170,25 +167,19 @@ async function run() {
     /////////////////////////////////////////////////////////////////////////
 
     io.on("connection", (socket) => {
-      console.log(`User connected: ${socket.id}`);
-
       socket.on("join_room", (data) => {
         socket.join(data);
-        console.log(`User with ID: ${socket.id} joined room: ${data}`);
       });
 
       socket.on("send_message", (data) => {
-        console.log(data);
         socket.to(data.room).emit("receive_message", data);
       });
 
       socket.on("disconnect", () => {
-        console.log("User disconnected", socket.id);
       });
     });
 
     server.listen(5001, () => {
-      console.log("SOCKET.IO SERVER RUNNING");
     });
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +196,6 @@ async function run() {
         }));
         res.json(formattedSuggestions);
       } catch (error) {
-        console.error("Error fetching translation suggestions:", error);
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -216,7 +206,6 @@ async function run() {
 
     app.post("/api/history", async (req, res) => {
       try {
-        // await client.connect();
         const translation = req.body;
         const result = await translationCollection.insertOne(translation);
         res.status(201).json(result.ops[0]);
@@ -224,24 +213,20 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
-        // await client.close();
       }
     });
   
     app.get("/api/history", async (req, res) => {
       try {
-        // await client.connect();
+    
         const translations = await translationCollection
           .find()
           .sort({ createdAt: -1 })
           .toArray();
         res.json(translations);
       } catch (error) {
-        console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
-      } finally {
-        // await client.close();
-      }
+      } 
     });
 
     app.delete("/api/history/:id", async (req, res) => {
@@ -251,7 +236,6 @@ async function run() {
         const result = await translationCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
-        console.error("Error deleting translation history:", error);
         res.status(500).send("Internal Server Error");
       }
     });
@@ -385,8 +369,8 @@ async function run() {
         total_amount: order.price,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `https://etranslator.netlify.app/payment/success/${tran_id}`,
-        fail_url: `https://etranslator.netlify.app/payment/fail/${tran_id}`,
+        success_url: `http://localhost:5000/payment/success/${tran_id}`,
+        fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -431,7 +415,7 @@ async function run() {
 
         if (processedTransactions.has(tranId)) {
           // Transaction already processed, handle accordingly 
-          res.redirect(`https://etranslator.netlify.app/payment/success/${tranId}`);
+          res.redirect(`http://localhost:5000/payment/success/${tranId}`);
           return;
         }
 
@@ -448,7 +432,8 @@ async function run() {
 
         if (result.modifiedCount > 0) {
           res.redirect(
-            `https://etranslator.netlify.app/payment/success/${req.params.tranId}`
+            `http://localhost:5173/payment/success/${req.params.tranId}`
+            // replace with netlify url
           );
         }
       });
@@ -464,7 +449,8 @@ async function run() {
         );
         if (result.deletedCount) {
           res.redirect(
-            `https://etranslator.netlify.app/payment/fail/${req.params.tranId}`
+            `http://localhost:5173/payment/fail/${req.params.tranId}`
+            // replace with netlify url
           );
         }
       });

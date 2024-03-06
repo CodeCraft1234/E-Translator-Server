@@ -13,7 +13,7 @@ const socketIo = require("socket.io");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173","https://etranslator.netlify.app/"],
     methods: ["GET", "POST"],
   },
 
@@ -24,7 +24,7 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173","https://etranslator.netlify.app/"],
     credentials: true,
   })
 );

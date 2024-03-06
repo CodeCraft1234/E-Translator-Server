@@ -8,12 +8,12 @@ const { Server } = require("socket.io");
 const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const socketIo = require("socket.io");
+// const socketIo = require("socket.io");
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173","https://etranslator.netlify.app/"],
+    origin: ["http://localhost:5173", "https://etranslator.netlify.app/"],
     methods: ["GET", "POST"],
   },
 
@@ -24,7 +24,7 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["http://localhost:5173","https://etranslator.netlify.app/"],
+    origin: ["http://localhost:5173", "https://etranslator.netlify.app/"],
     credentials: true,
   })
 );
@@ -67,15 +67,15 @@ const client = new MongoClient(uri, {
 
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
-const is_live = false; 
+const is_live = false;
 async function run() {
   try {
-   
+
     const usersInfocollection = client.db("E-Translator").collection("usersInfo");
     const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
     const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
     const productCollection = client.db("E-Translator").collection("products");
-    const orderCollection = client.db("E-Translator").collection("orders");
+    const orderCollection = client.db("E-Translator").collection("payments");
     const translationCollection = client.db("E-Translator").collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
@@ -127,7 +127,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/users/admin/:email',verifyJWT, async (req, res) => {
+    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
@@ -140,15 +140,15 @@ async function run() {
       res.send(result);
     })
 
- 
-    app.delete("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
+
+    app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await usersInfocollection.deleteOne(filter);
       res.send(result);
     });
 
-    app.patch("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedoc = {
@@ -213,10 +213,10 @@ async function run() {
       } finally {
       }
     });
-  
+
     app.get("/api/history", async (req, res) => {
       try {
-    
+
         const translations = await translationCollection
           .find()
           .sort({ createdAt: -1 })
@@ -224,7 +224,7 @@ async function run() {
         res.json(translations);
       } catch (error) {
         res.status(500).json({ error: "Internal Server Error" });
-      } 
+      }
     });
 
     app.delete("/api/history/:id", async (req, res) => {
@@ -285,7 +285,7 @@ async function run() {
     //                        blogs info part
     ////////////////////////////////////////////////////////////////////////
 
-    app.post("/blogs",verifyJWT, verifyAdmin, async (req, res) => {
+    app.post("/blogs", verifyJWT, verifyAdmin, async (req, res) => {
       const data = req.body;
       const result = await blogsInfocollection.insertOne(data);
       res.send(result);
@@ -303,7 +303,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch("/blogs/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const body = req.body;
@@ -317,7 +317,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
+    app.delete("/blogs/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await blogsInfocollection.deleteOne(filter);
@@ -355,8 +355,11 @@ async function run() {
     /////////////////////////////////////////////////////////////////
     //                   sslcommerz integration
     /////////////////////////////////////////////////////////////////
+    app.get('/payment', async (req, res) => {
+      const result = await orderCollection.find().toArray()
+      res.send(result)
+    })
 
- 
     app.post("/order/:id", async (req, res) => {
       // console.log(req.body);
       const product = await productCollection.findOne({
@@ -370,7 +373,7 @@ async function run() {
         success_url: `http://localhost:5000/payment/success/${tran_id}`,
         // replace with 'https://e-translator-server.vercel.app'
         fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
-         // replace with 'https://e-translator-server.vercel.app'
+        // replace with 'https://e-translator-server.vercel.app'
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -410,6 +413,8 @@ async function run() {
       });
       const processedTransactions = new Set();
 
+
+
       app.post("/payment/success/:tranId", async (req, res) => {
         const tranId = req.params.tranId;
 
@@ -421,7 +426,7 @@ async function run() {
         }
 
         processedTransactions.add(tranId);
-      
+
         const result = await orderCollection.updateOne(
           { tranjectionId: tranId },
           {
@@ -677,8 +682,8 @@ app.listen(port, () => {
 //   }
 // });
 
-// // Orders Routes
-// app.post("/orders", async(req, res) => {
+// // payments Routes
+// app.post("/payments", async(req, res) => {
 //   try {
 //     const order = await Order.create(req.body);
 //     res.status(201).json(order);
@@ -688,10 +693,10 @@ app.listen(port, () => {
 //   }
 // });
 
-// app.get("/orders", async(req, res) => {
+// app.get("/payments", async(req, res) => {
 //   try {
-//     const orders = await Order.find().exec();
-//     res.json(orders);
+//     const payments = await Order.find().exec();
+//     res.json(payments);
 //   } catch (error) {
 //     console.error(error);
 //     res.status(500).json({ error: "Internal Server Error" });
@@ -699,7 +704,7 @@ app.listen(port, () => {
 // });
 
 // // SSLCommerz Integration
-// app.post("/orders/:id", async (req, res) => {
+// app.post("/payments/:id", async (req, res) => {
 //   try {
 //     const productId = req.params.id;
 //     console.log(productId);

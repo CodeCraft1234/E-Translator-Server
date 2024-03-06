@@ -13,7 +13,7 @@ const socketIo = require("socket.io");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://etranslator.netlify.app",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"],
   },
 });
@@ -23,14 +23,14 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["https://etranslator.netlify.app"],
+    origin: ["http://localhost:5173"],
     credentials: true,
   })
 );
 
 
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser())
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -385,8 +385,8 @@ async function run() {
         total_amount: order.price,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `https://etranslator.netlify.app/payment/success/${tran_id}`,
-        fail_url: `https://etranslator.netlify.app/payment/fail/${tran_id}`,
+        success_url: `http://localhost:5000/payment/success/${tran_id}`,
+        fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -431,7 +431,7 @@ async function run() {
 
         if (processedTransactions.has(tranId)) {
           // Transaction already processed, handle accordingly 
-          res.redirect(`https://etranslator.netlify.app/payment/success/${tranId}`);
+          res.redirect(`http://localhost:5173/payment/success/${tranId}`);
           return;
         }
 
@@ -448,7 +448,7 @@ async function run() {
 
         if (result.modifiedCount > 0) {
           res.redirect(
-            `https://etranslator.netlify.app/payment/success/${req.params.tranId}`
+            `http://localhost:5173/payment/success/${req.params.tranId}`
           );
         }
       });
@@ -464,7 +464,7 @@ async function run() {
         );
         if (result.deletedCount) {
           res.redirect(
-            `https://etranslator.netlify.app/payment/fail/${req.params.tranId}`
+            `http://localhost:5000/payment/fail/${req.params.tranId}`
           );
         }
       });
@@ -725,8 +725,8 @@ app.listen(port, () => {
 //       total_amount: product.price,
 //       currency: "BDT",
 //       tran_id: tran_id,
-//       success_url: `https://etranslator.netlify.app/payment/success/${tran_id}`,
-//       fail_url: `https://etranslator.netlify.app/payment/fail/${tran_id}`,
+//       success_url: `http://localhost:5000/payment/success/${tran_id}`,
+//       fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
 //       cancel_url: 'http://localhost:3030/cancel',
 //       ipn_url: 'http://localhost:3030/ipn',
 //       shipping_method: 'Courier',
@@ -778,7 +778,7 @@ app.listen(port, () => {
 //       { paidStatus: true }
 //     );
 //     if (result.modifiedCount > 0) {
-//       res.redirect(`https://etranslator.netlify.app/payment/success/${tranId}`);
+//       res.redirect(`http://localhost:5000/payment/success/${tranId}`);
 //     }
 //   } catch (error) {
 //     console.error(error);
@@ -792,7 +792,7 @@ app.listen(port, () => {
 //     const tranId = req.params.tranId;
 //     const result = await Order.deleteOne({ transactionId: tranId });
 //     if (result.deletedCount) {
-//       res.redirect(`https://etranslator.netlify.app/payment/fail/${tranId}`);
+//       res.redirect(`http://localhost:5000/payment/fail/${tranId}`);
 //     }
 //   } catch (error) {
 //     console.error(error);

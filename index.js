@@ -13,7 +13,10 @@ const socketIo = require("socket.io");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://etranslator.netlify.app",
+    origin: [
+      // "https://etranslator.netlify.app",
+     "http://localhost:5173"
+  ],
     methods: ["GET", "POST"],
   },
 });
@@ -24,7 +27,7 @@ const io = new Server(server, {
 app.use(
   cors({
     origin: [
-      "https://etranslator.netlify.app",
+      // "https://etranslator.netlify.app",
       "http://localhost:5173"
     ],
     credentials: true,
@@ -129,7 +132,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+    app.get('/users/admin/:email',verifyJWT, async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
@@ -370,7 +373,9 @@ async function run() {
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
         success_url: `http://localhost:5000/payment/success/${tran_id}`,
+        // replace with vercel url
         fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
+        // replace with vercel url
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -414,13 +419,14 @@ async function run() {
         const tranId = req.params.tranId;
 
         if (processedTransactions.has(tranId)) {
-          // Transaction already processed, handle accordingly 
+    
           res.redirect(`http://localhost:5000/payment/success/${tranId}`);
+           // replace with vercel url
           return;
         }
 
         processedTransactions.add(tranId);
-        // Continue with success logic
+      
         const result = await orderCollection.updateOne(
           { tranjectionId: tranId },
           {

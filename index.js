@@ -446,7 +446,7 @@ async function run() {
 
         if (result.modifiedCount > 0) {
           res.redirect(
-            `http://localhost:5173/payment/success/${req.params.tranId}`
+            `https://etranslator.netlify.app/payment/success/${req.params.tranId}`
             // replace with https://etranslator.netlify.app/
           );
         }
@@ -465,7 +465,7 @@ async function run() {
         );
         if (result.deletedCount) {
           res.redirect(
-            `http://localhost:5173/payment/fail/${req.params.tranId}`
+            `https://etranslator.netlify.app/payment/fail/${req.params.tranId}`
             // replace with https://etranslator.netlify.app/
           );
         }

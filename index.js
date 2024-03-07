@@ -345,12 +345,19 @@ async function run() {
       res.send(result)
     })
 
+    // app.delete("/blogComment/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const filter = { _id: new ObjectId(id) };
+    //   const result = await commentsInfocollection.deleteOne(filter);
+    //   res.send(result);
+    // });
     app.delete("/blogComment/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      const result = await commentsInfocollection.deleteOne(filter);
+      const result = await  commentsInfocollection.deleteOne(filter);
       res.send(result);
     });
+    
 
     /////////////////////////////////////////////////////////////////
     //                   sslcommerz integration
@@ -359,6 +366,7 @@ async function run() {
       const result = await orderCollection.find().toArray()
       res.send(result)
     })
+
 
     app.post("/order/:id", async (req, res) => {
       // console.log(req.body);
@@ -443,6 +451,8 @@ async function run() {
           );
         }
       });
+
+
 
       app.post("/payment/fail/:tranId", async (req, res) => {
         const result = await orderCollection.deleteOne(

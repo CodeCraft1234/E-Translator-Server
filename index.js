@@ -8,7 +8,7 @@ const { Server } = require("socket.io");
 const cookieParser = require("cookie-parser");
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-// const socketIo = require("socket.io");
+const socketIo = require("socket.io");
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -16,7 +16,6 @@ const io = new Server(server, {
     origin: ["http://localhost:5173","https://etranslator.netlify.app"],
     methods: ["GET", "POST"],
   },
-
 });
 
 //MIADLEWERE
@@ -31,7 +30,7 @@ app.use(
 
 
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -53,10 +52,15 @@ const verifyJWT = (req, res, next) => {
 }
 
 //------------------------------------------------------------------
-
+//------------------------------------------------------------------
 
 const port = process.env.PORT || 5000;
+
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@robiul.13vbdvd.mongodb.net/?retryWrites=true&w=majority`;
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -67,15 +71,16 @@ const client = new MongoClient(uri, {
 
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASS;
-const is_live = false;
+const is_live = false; //true for live, false for sandbox
+
 async function run() {
   try {
-
+   
     const usersInfocollection = client.db("E-Translator").collection("usersInfo");
     const blogsInfocollection = client.db("E-Translator").collection("blogsInfo");
     const commentsInfocollection = client.db("E-Translator").collection("commentsInfo");
     const productCollection = client.db("E-Translator").collection("products");
-    const orderCollection = client.db("E-Translator").collection("payments");
+    const orderCollection = client.db("E-Translator").collection("orders");
     const translationCollection = client.db("E-Translator").collection("translations");
     const ratingCollection = client.db("E-Translator").collection("rating");
     const feedbackCollection = client.db("E-Translator").collection("feedback");
@@ -140,15 +145,15 @@ async function run() {
       res.send(result);
     })
 
-
-    app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+ 
+    app.delete("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await usersInfocollection.deleteOne(filter);
       res.send(result);
     });
 
-    app.patch("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch("/users/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedoc = {
@@ -165,19 +170,25 @@ async function run() {
     /////////////////////////////////////////////////////////////////////////
 
     io.on("connection", (socket) => {
+      console.log(`User connected: ${socket.id}`);
+
       socket.on("join_room", (data) => {
         socket.join(data);
+        console.log(`User with ID: ${socket.id} joined room: ${data}`);
       });
 
       socket.on("send_message", (data) => {
+        console.log(data);
         socket.to(data.room).emit("receive_message", data);
       });
 
       socket.on("disconnect", () => {
+        console.log("User disconnected", socket.id);
       });
     });
 
     server.listen(5001, () => {
+      console.log("SOCKET.IO SERVER RUNNING");
     });
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -194,6 +205,7 @@ async function run() {
         }));
         res.json(formattedSuggestions);
       } catch (error) {
+        console.error("Error fetching translation suggestions:", error);
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -204,6 +216,7 @@ async function run() {
 
     app.post("/api/history", async (req, res) => {
       try {
+        // await client.connect();
         const translation = req.body;
         const result = await translationCollection.insertOne(translation);
         res.status(201).json(result.ops[0]);
@@ -211,19 +224,23 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
       } finally {
+        // await client.close();
       }
     });
-
+  
     app.get("/api/history", async (req, res) => {
       try {
-
+        // await client.connect();
         const translations = await translationCollection
           .find()
           .sort({ createdAt: -1 })
           .toArray();
         res.json(translations);
       } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Internal Server Error" });
+      } finally {
+        // await client.close();
       }
     });
 
@@ -234,6 +251,7 @@ async function run() {
         const result = await translationCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
+        console.error("Error deleting translation history:", error);
         res.status(500).send("Internal Server Error");
       }
     });
@@ -285,7 +303,7 @@ async function run() {
     //                        blogs info part
     ////////////////////////////////////////////////////////////////////////
 
-    app.post("/blogs", verifyJWT, verifyAdmin, async (req, res) => {
+    app.post("/blogs",verifyJWT, verifyAdmin, async (req, res) => {
       const data = req.body;
       const result = await blogsInfocollection.insertOne(data);
       res.send(result);
@@ -303,7 +321,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/blogs/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const body = req.body;
@@ -317,7 +335,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/blogs/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.delete("/blogs/:id",verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await blogsInfocollection.deleteOne(filter);
@@ -345,29 +363,18 @@ async function run() {
       res.send(result)
     })
 
-    // app.delete("/blogComment/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const filter = { _id: new ObjectId(id) };
-    //   const result = await commentsInfocollection.deleteOne(filter);
-    //   res.send(result);
-    // });
     app.delete("/blogComment/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      const result = await  commentsInfocollection.deleteOne(filter);
+      const result = await commentsInfocollection.deleteOne(filter);
       res.send(result);
     });
-    
 
     /////////////////////////////////////////////////////////////////
     //                   sslcommerz integration
     /////////////////////////////////////////////////////////////////
-    app.get('/payment', async (req, res) => {
-      const result = await orderCollection.find().toArray()
-      res.send(result)
-    })
 
-
+ 
     app.post("/order/:id", async (req, res) => {
       // console.log(req.body);
       const product = await productCollection.findOne({
@@ -378,10 +385,8 @@ async function run() {
         total_amount: order.price,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `http://localhost:5000/payment/success/${tran_id}`,
-        // replace with 'https://e-translator-server.vercel.app'
-        fail_url: `http://localhost:5000/payment/fail/${tran_id}`,
-        // replace with 'https://e-translator-server.vercel.app'
+        success_url: `https://e-translator-server.vercel.app/payment/success/${tran_id}`,
+        fail_url: `https://e-translator-server.vercel.app/payment/fail/${tran_id}`,
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
@@ -421,20 +426,17 @@ async function run() {
       });
       const processedTransactions = new Set();
 
-
-
       app.post("/payment/success/:tranId", async (req, res) => {
         const tranId = req.params.tranId;
       
         if (processedTransactions.has(tranId)) {
           // Transaction already processed, handle accordingly 
-          res.redirect(`http://localhost:5173/payment/success/${tranId}`);
-          // replace with https://etranslator.netlify.app/
+          res.redirect(`https://etranslator.netlify.app/payment/success/${tranId}`);
           return;
         }
 
         processedTransactions.add(tranId);
-
+        // Continue with success logic
         const result = await orderCollection.updateOne(
           { tranjectionId: tranId },
           {
@@ -447,12 +449,9 @@ async function run() {
         if (result.modifiedCount > 0) {
           res.redirect(
             `https://etranslator.netlify.app/payment/success/${req.params.tranId}`
-            // replace with https://etranslator.netlify.app/
           );
         }
       });
-
-
 
       app.post("/payment/fail/:tranId", async (req, res) => {
         const result = await orderCollection.deleteOne(
@@ -466,7 +465,6 @@ async function run() {
         if (result.deletedCount) {
           res.redirect(
             `https://etranslator.netlify.app/payment/fail/${req.params.tranId}`
-            // replace with https://etranslator.netlify.app/
           );
         }
       });
@@ -680,8 +678,8 @@ app.listen(port, () => {
 //   }
 // });
 
-// // payments Routes
-// app.post("/payments", async(req, res) => {
+// // Orders Routes
+// app.post("/orders", async(req, res) => {
 //   try {
 //     const order = await Order.create(req.body);
 //     res.status(201).json(order);
@@ -691,10 +689,10 @@ app.listen(port, () => {
 //   }
 // });
 
-// app.get("/payments", async(req, res) => {
+// app.get("/orders", async(req, res) => {
 //   try {
-//     const payments = await Order.find().exec();
-//     res.json(payments);
+//     const orders = await Order.find().exec();
+//     res.json(orders);
 //   } catch (error) {
 //     console.error(error);
 //     res.status(500).json({ error: "Internal Server Error" });
@@ -702,7 +700,7 @@ app.listen(port, () => {
 // });
 
 // // SSLCommerz Integration
-// app.post("/payments/:id", async (req, res) => {
+// app.post("/orders/:id", async (req, res) => {
 //   try {
 //     const productId = req.params.id;
 //     console.log(productId);
